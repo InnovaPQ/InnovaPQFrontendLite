@@ -1,0 +1,116 @@
+{
+    "Contexto":{
+        "Descripcion":"input/Tabla 2 - Descripción Centro Carga.xlsx",
+        "Informacion":"input/Tabla 1 - Información Centro Carga.xlsx",
+        "Medidor":"input/Tabla 3 - Información Medidor.xlsx",
+        "Medicion":"input/Tabla 4 - Datos Medición.xlsx"
+    },
+    "CumplimientoRed":{
+        "Principal":"Cumplimiento Código de Red/tablas/resumen_cumplimiento_codigo_red.xlsx",
+        "limaplicables":"Cumplimiento Código de Red/tablas/limites_aplicables_codigo_red.xlsx",
+        "limdatd":"Cumplimiento Código de Red/tablas/limites_datd_dai_porcentaje_il.xlsx",
+        "ResumenRapido":"Cumplimiento Código de Red/tablas/informe_rapido.xlsx"
+    },
+    "Unifilar":"input/diagrama_unifilar.png",
+    "Resumen":{
+        "ResumenActiva":"Potencias/tablas/potencia_activa_kw.xlsx",
+        "ResumenReactiva":"Potencias/tablas/potencia_reactiva_kvar.xlsx",
+        "ResumenAparente":"Potencias/tablas/potencia_aparente_kva.xlsx",
+        "ResumenFP":"FP (Factor de Potencia)/tablas/factor_potencia.xlsx",
+        "ResumenTHD":"Armónicas en Voltaje/tablas/thdv_porcentaje.xlsx",
+        "ResumenTDD":"Armónicas en Corrientes/tablas/tdd_porcentaje.xlsx",
+        "ResumenDesVoltaje":"Desbalances/tablas/desbalance_voltaje_codigo_red.xlsx",
+        "ResumenDesCorriente":"Desbalances/tablas/desbalance_corriente_codigo_red.xlsx",
+        "ResumenVProm":"Voltajes RMS/tablas/estadisticas_voltajes_rms.xlsx",
+        "ResumenCProm":"Corrientes RMS/tablas/descriptivos_corrientes_combinadas.xlsx",
+        "ResumenFlickPst":"Flickers/tablas/flicker_pst.xlsx",
+        "ResumenFlickPlt":"Flickers/tablas/flicker_plt.xlsx",
+        "ResumenFrecuencia":"Frecuencia/tablas/frecuencia_hz.xlsx"
+    },
+    "Potencia":{
+        "PotenciaActiva":"Potencias/series_tiempo/potencia_activa.png",
+        "PotenciaReactiva":"Potencias/series_tiempo/potencia_reactiva.png",
+        "PotenciaAparente":"Potencias/series_tiempo/potencia_aparente.png",
+        "PotenciaFp":"FP (Factor de Potencia)/series_tiempo/factor_de_potencia.png",
+        "PotenciaDistribucionActiva":"Potencias/histogramas/distribución_potencia_activa.png",
+        "PotenciaDistribucionReactiva":"Potencias/histogramas/distribución_potencia_reactiva.png",
+        "PotenciaDistribucionAparente":"Potencias/histogramas/distribución_potencia_aparente.png",
+        "PotenciaDistribucionFp":"FP (Factor de Potencia)/histogramas/distribución_factor_de_potencia.png",
+        "PotenciaDescriptivas":"Potencias/tablas/descriptivos_potencias.xlsx",
+        "PotenciaDemandas":"Potencias/tablas/resumen_totales_demandas.xlsx",
+        "PotenciaEnergia":"Potencias/tablas/resumen_totales_energia.xlsx",
+        "IndicadorFC":"Potencias/indicadores/gauge_factor_carga.png",
+        "IndicadorFP":"FP (Factor de Potencia)/indicadores/gauge_factor_potencia.png",
+        "EnergiaActiva":"Potencias/series_tiempo/energia_activa_diaria.png",
+        "EnergiaReactiva":"Potencias/series_tiempo/energia_reactiva_diaria.png",
+        "PerfilDiario":"Potencias/series_tiempo/perfil_diario_demanda.png",
+        "Heatmap":"Potencias/series_tiempo/heatmap_demanda_horaria.png",
+        "Demanda3D":"Potencias/series_tiempo/demanda_3d.png"
+    },
+    "Voltaje":{
+        "VoltajeDistrLL":"Voltajes RMS/histogramas/distribución_tensiones_l-l.png",
+        "VoltajeRMSMaximo":"Voltajes RMS/series_tiempo/voltajes_rms_máximo.png",
+        "VoltajeRMSMinimo":"Voltajes RMS/series_tiempo/voltajes_rms_mínimo.png",
+        "VoltajeRMSPromedio":"Voltajes RMS/series_tiempo/voltajes_rms_promedio.png",
+        "VoltajeTablaDescriptiva":"Voltajes RMS/tablas/descriptivos_voltajes_ll.xlsx"
+    },
+    "Corriente":{
+        "CorrienteDistr":"Corrientes RMS/histogramas/distribución_corrientes_por_fase.png",
+        "CorrienteRMSMaximo":"Corrientes RMS/series_tiempo/corrientes_rms_máximo.png",
+        "CorrienteRMSMinimo":"Corrientes RMS/series_tiempo/corrientes_rms_mínimo.png",
+        "CorrienteRMSPromedio":"Corrientes RMS/series_tiempo/corrientes_rms_promedio.png",
+        "CorrienteTablaDescriptiva":"Corrientes RMS/tablas/descriptivos_corrientes.xlsx"
+    },
+    "Desbalance":{
+        "DesbalanceDistrVoltaje":"Desbalances/histogramas/distribución_desbalance_voltaje.png",
+        "DesbalanceDistrCorriente":"Desbalances/histogramas/distribución_desbalance_corriente.png",
+        "DesbalanceVoltajeSerieTiempo":"Desbalances/series_tiempo/desbalance_voltaje.png",
+        "DesbalanceCorrienteSerieTiempo":"Desbalances/series_tiempo/desbalance_corriente.png",
+        "DesbalanceTablaDescriptivaVoltaje":"Desbalances/tablas/desbalance_voltaje_porcentaje.xlsx",
+        "DesbalanceTablaDescriptivaCorriente":"Desbalances/tablas/desbalance_corriente_porcentaje.xlsx"
+    },
+    "Frecuencia":{
+        "FrecuenciaDistr":"Frecuencia/histogramas/distribución_frecuencia.png",
+        "FrecuenciaSerieTiempo":"Frecuencia/series_tiempo/frecuencia.png",
+        "FrecuenciaTabla":"Frecuencia/tablas/frecuencia_hz.xlsx"
+    },
+    "Flicker":{
+        "FlickerPstSerieTiempo":"Flickers/series_tiempo/flicker_pst.png",
+        "FlickerPltSerieTiempo":"Flickers/series_tiempo/flicker_plt.png",
+        "FlickerDistrPst": "Flickers/histogramas/distribución_flicker_pst.png",
+        "FlickerDistrPlt": "Flickers/histogramas/distribución_flicker_plt.png",
+        "FlickerTablaPst":"Flickers/tablas/flicker_pst_descriptivo.xlsx",
+        "FlickerTablaPlt":"Flickers/tablas/flicker_plt_descriptivo.xlsx"
+    },
+    "ArmonicosVoltaje":{
+        "ArmonicosL1":"Armónicas en Voltaje/espectros/espectro_voltaje_v1.png",
+        "ArmonicosL2":"Armónicas en Voltaje/espectros/espectro_voltaje_v2.png",
+        "ArmonicosL3":"Armónicas en Voltaje/espectros/espectro_voltaje_v3.png",
+        "ArmonicosDistr":"Armónicas en Voltaje/histogramas/distribución_thdv.png",
+        "ArmonicosTiempo":"Armónicas en Voltaje/series_tiempo/thdv.png",
+        "ArmonicosTabla":"Armónicas en Voltaje/tablas/descriptivos_thdv.xlsx"
+
+    },
+    "ArmonicosCorriente":{
+        "ArmonicosIL1":"Armónicas en Corrientes/espectros/espectro_corriente_i1.png",
+        "ArmonicosIL2":"Armónicas en Corrientes/espectros/espectro_corriente_i2.png",
+        "ArmonicosIL3":"Armónicas en Corrientes/espectros/espectro_corriente_i3.png",
+        "ArmonicosIDistr":"Armónicas en Corrientes/histogramas/distribución_datd_(tdd).png",
+        "ArmonicosITiempo":"Armónicas en Corrientes/series_tiempo/datd-tdd.png",
+        "ArmonicosITabla":"Armónicas en Corrientes/tablas/descriptivos_thdi.xlsx",
+        "ArmonicosITablaP95":"Armónicas en Corrientes/tablas/armonicas_corriente_p95_il.xlsx"
+    },
+    "FactorK":{
+        "FKCuartil":"Factor K/tablas/factor_k_quantile.xlsx",
+        "FKDescriptivo":"Factor K/tablas/factor_k_descriptivo.xlsx",
+        "FKSerie":"Factor K/series_tiempo/factor_k.png",
+        "FKHistograma":"Factor K/histogramas/distribución_factor_k.png"
+    },
+    "Comentarios":{
+        "CodigoRed":"out_llm/codigo_red.json",
+        "Energia":"out_llm/energia.json",
+        "PQ":"out_llm/pq.json"
+
+    }
+
+}   
