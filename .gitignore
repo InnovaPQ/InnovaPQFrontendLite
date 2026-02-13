@@ -1,0 +1,52 @@
+# === Archivos de Cache de Python ===
+# Ignora las carpetas de bytecode compilado
+__pycache__/
+*.pyc
+
+# === Entornos Virtuales ===
+# Ignora carpetas comunes de entornos virtuales
+.venv/
+venv/
+env/
+*.env
+
+# === Archivos de Dependencias ===
+# A menudo es mejor ignorar la carpeta de instalación de pip
+# y solo versionar el archivo requirements.txt
+.local/
+lib/
+lib64/
+include/
+
+# === Archivos del IDE/Editor ===
+# Ignora la configuración local de VSCode
+.vscode/
+
+# === Archivos del Sistema Operativo ===
+# Ignora archivos de sistema de macOS
+.DS_Store
+.AppleDouble
+
+# Ignora archivos de sistema de Windows
+Thumbs.db
+desktop.ini
+
+# === Archivos Sensibles ===
+# Ignora archivos de variables de entorno que contienen claves/contraseñas
+.env
+.env.*
+*.env
+
+# === Archivos de Streamlit ===
+# Ignora el caché de configuración de Streamlit
+.streamlit/
+
+# === Archivos de Datos (Opcional) ===
+# Descomenta las siguientes líneas si NO quieres subir tus
+# archivos de datos al repositorio (recomendado si son grandes o privados).
+# *.csv
+# *.xlsx
+# *.xls
+# *.json
+# *.db
+# *.sqlite3
