@@ -1,42 +1,42 @@
 import streamlit as st
 from Modelos import Comentarios
 from Servicio import Data
-from pq.DescripcionPQ import Descripcion
-from pq.ResumenPQ import ResumenPQ
-from pq.PotenciaPQ import PotenciaPQ
-from pq.VoltajesPQ import VoltajesPQ
-from pq.CorrientesPQ import CorrientesPQ
-from pq.DesbalancesPQ import DesbalancesPQ
-from pq.FrecuenciaPQ import FrecuenciaPQ
-from pq.FlickerPQ import FlickerPQ
-from pq.ArmonicosVoltajePQ import ArmonicosVoltajePQ
-from pq.ArmonicosCorrientePQ import ArmonicosCorrientePQ
-from pq.FactorKPQ import FactorKPQ
+from Reporte.codigoRed.DescripcionCodigoRed import Descripcion
+from Reporte.codigoRed.CumplimientoCodigoRed import Cumplimiento
+from Reporte.codigoRed.ResumenCodigoRed import ResumenCodigoRed
+from Reporte.codigoRed.PotenciaCodigoRed import PotenciaCodigoRed
+from Reporte.codigoRed.VoltajesCodigoRed import VoltajesCodigoRed
+from Reporte.codigoRed.CorrientesCodigoRed import CorrientesCodigoRed
+from Reporte.codigoRed.DesbalancesCodigoRed import DesbalancesCodigoRed
+from Reporte.codigoRed.FrecuenciaCodigoRed import FrecuenciaCodigoRed
+from Reporte.codigoRed.FlickerCodigoRed import FlickerCodigoRed
+from Reporte.codigoRed.ArmonicosVoltajeCodigoRed import ArmonicosVoltaje
+from Reporte.codigoRed.ArmonicosCorrienteCodigoRed import ArmonicosCorriente
 
 def Ventana(MostrarVista,Servicio,Datos):
     match MostrarVista:
         case "Descripcion":
             return Descripcion(Servicio,Datos)
+        case "Cumplimiento":
+            return Cumplimiento(Servicio,Datos)
         case "Resumen Sistema":
-            return ResumenPQ(Servicio,Datos)
+            return ResumenCodigoRed(Servicio,Datos)
         case "Potencia":
-            return PotenciaPQ(Servicio,Datos)
+            return PotenciaCodigoRed(Servicio,Datos)
         case "Voltajes":
-            return VoltajesPQ(Servicio,Datos)
+            return VoltajesCodigoRed(Servicio,Datos)
         case "Corrientes":
-            return CorrientesPQ(Servicio,Datos)
+            return CorrientesCodigoRed(Servicio,Datos)
         case "Desbalances":
-            return DesbalancesPQ(Servicio,Datos)
+            return DesbalancesCodigoRed(Servicio,Datos)
         case "Frecuencia":
-            return FrecuenciaPQ(Servicio,Datos)
+            return FrecuenciaCodigoRed(Servicio,Datos)
         case "Flicker":
-            return FlickerPQ(Servicio,Datos)
+            return FlickerCodigoRed(Servicio,Datos)
         case "Armonicos Voltaje":
-            return ArmonicosVoltajePQ(Servicio,Datos)
+            return ArmonicosVoltaje(Servicio,Datos)
         case "Armonicos Corriente":
-            return ArmonicosCorrientePQ(Servicio,Datos)
-        case "Factor K":
-            return FactorKPQ(Servicio,Datos)
+            return ArmonicosCorriente(Servicio,Datos)
         
 
 @st.cache_resource
@@ -58,7 +58,7 @@ def get_diccionario_rutas(_Servicio,nombre_carpeta):
 
 
    
-def PQ(report_id):
+def CodigoRed(report_id):
 
     Servicio=get_servicio_aws(report_id, _version=1)
     Datos=get_diccionario_rutas(_Servicio=Servicio,nombre_carpeta=report_id)
@@ -71,12 +71,13 @@ def PQ(report_id):
         return st.session_state.mostrar_vista
 
     # Header más pequeño
-    st.markdown("### Calidad de Potencia")
+    st.markdown("### Código de Red")
     st.caption(f'ID: {report_id}')
     
     # Selector de secciones como tabs horizontales (arriba)
     opciones_vista = [
         "Descripción",
+        "Cumplimiento", 
         "Resumen Sistema",
         "Potencia",
         "Voltajes",
@@ -85,8 +86,7 @@ def PQ(report_id):
         "Frecuencia",
         "Flicker",
         "Armonicos Voltaje",
-        "Armonicos Corriente",
-        "Factor K"
+        "Armonicos Corriente"
     ]
     
     # Obtener el índice de la vista actual
@@ -99,6 +99,7 @@ def PQ(report_id):
     # Mapeo de nombres de UI a nombres internos
     mapeo_vistas = {
         "Descripción": "Descripcion",
+        "Cumplimiento": "Cumplimiento",
         "Resumen Sistema": "Resumen Sistema",
         "Potencia": "Potencia",
         "Voltajes": "Voltajes",
@@ -107,8 +108,7 @@ def PQ(report_id):
         "Frecuencia": "Frecuencia",
         "Flicker": "Flicker",
         "Armonicos Voltaje": "Armonicos Voltaje",
-        "Armonicos Corriente": "Armonicos Corriente",
-        "Factor K":"Factor K"
+        "Armonicos Corriente": "Armonicos Corriente"
     }
     
     # Usar botones en dos filas que funcionan como tabs
@@ -178,7 +178,7 @@ def PQ(report_id):
         st.markdown("### Comentarios")
         st.divider()
         
-        rutaComentarios=Datos["Comentarios"]["PQ"]
+        rutaComentarios=Datos["Comentarios"]["CodigoRed"]
         
         # Inicializar clave para el JSON completo
         json_key = f"comentarios_json_{rutaComentarios}"
@@ -300,37 +300,22 @@ def PQ(report_id):
                                             "report_id": report_id,
                                             "bucket": Servicio.bucket,
                                             "region": Servicio.Region,
-                                            "report_type": "pq",
+                                            "report_type": "codigo_red",
                                             "email": email_pdf.strip(),
                                             "report_date": fecha_formato
                                         }
                                         
-                                        # Validar que el mensaje tenga todos los campos requeridos
-                                        campos_requeridos = ["report_id", "bucket", "region", "report_type", "email", "report_date"]
-                                        campos_faltantes = [campo for campo in campos_requeridos if not mensaje_pdf_sqs.get(campo)]
+                                        # Obtener URL de la cola PDF desde secrets
+                                        queue_url_pdf = st.secrets["aws"]["sqs_pdf_queue_url"]
                                         
-                                        if campos_faltantes:
-                                            st.error(f"❌ Faltan campos requeridos en el mensaje: {', '.join(campos_faltantes)}")
-                                        else:
-                                            # Obtener URL de la cola PDF desde secrets
-                                            queue_url_pdf = st.secrets["aws"]["sqs_pdf_queue_url"]
-                                            
-                                            if not queue_url_pdf:
-                                                st.error("❌ No se encontró la URL de la cola SQS en los secrets. Verifique la configuración.")
-                                            else:
-                                                # Enviar mensaje a SQS
-                                                try:
-                                                    Servicio.enviar_mensaje_sqs(queue_url_pdf, mensaje_pdf_sqs)
-                                                    st.success(f"✅ Mensaje enviado correctamente a SQS para generar PDF")
-                                                    
-                                                    # Cerrar modal y marcar como enviado SOLO si el envío fue exitoso
-                                                    st.session_state.mostrar_modal_pdf = False
-                                                    st.session_state.pdf_enviado = True
-                                                    st.session_state.email_pdf_enviado = email_pdf.strip()
-                                                    st.rerun()
-                                                except Exception as sqs_error:
-                                                    st.error(f"❌ Error al enviar mensaje a SQS: {str(sqs_error)}")
-                                                    raise sqs_error
+                                        # Enviar mensaje a SQS
+                                        Servicio.enviar_mensaje_sqs(queue_url_pdf, mensaje_pdf_sqs)
+                                        
+                                        # Cerrar modal y marcar como enviado
+                                        st.session_state.mostrar_modal_pdf = False
+                                        st.session_state.pdf_enviado = True
+                                        st.session_state.email_pdf_enviado = email_pdf.strip()
+                                        st.rerun()
                         except Exception as e:
                             st.error(f"❌ Error al enviar la solicitud: {str(e)}\n\nPor favor, intente nuevamente.")
 

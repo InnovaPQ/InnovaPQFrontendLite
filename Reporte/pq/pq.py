@@ -1,27 +1,43 @@
 import streamlit as st
 from Modelos import Comentarios
 from Servicio import Data
-from Energia.DescripcionEEnergia import Descripcion
-from Energia.ResumenEnergia import ResumenEnergia
-from Energia.FactoresEnergia import FactoresEnergia
-from Energia.ActivaReactivaEnergia import ActivaReactivaEnergia
-from Energia.DemandasEnergia import DemandasEnergia
-
+from Reporte.pq.DescripcionPQ import Descripcion
+from Reporte.pq.ResumenPQ import ResumenPQ
+from Reporte.pq.PotenciaPQ import PotenciaPQ
+from Reporte.pq.VoltajesPQ import VoltajesPQ
+from Reporte.pq.CorrientesPQ import CorrientesPQ
+from Reporte.pq.DesbalancesPQ import DesbalancesPQ
+from Reporte.pq.FrecuenciaPQ import FrecuenciaPQ
+from Reporte.pq.FlickerPQ import FlickerPQ
+from Reporte.pq.ArmonicosVoltajePQ import ArmonicosVoltajePQ
+from Reporte.pq.ArmonicosCorrientePQ import ArmonicosCorrientePQ
+from Reporte.pq.FactorKPQ import FactorKPQ
 
 def Ventana(MostrarVista,Servicio,Datos):
     match MostrarVista:
         case "Descripcion":
             return Descripcion(Servicio,Datos)
-        case "Resumen":
-            return ResumenEnergia(Servicio,Datos)
-        case "Factores":
-            return FactoresEnergia(Servicio,Datos)
-        case "Energia":
-            return ActivaReactivaEnergia(Servicio,Datos)
-        case "Demandas":
-            return DemandasEnergia(Servicio,Datos)
-
-
+        case "Resumen Sistema":
+            return ResumenPQ(Servicio,Datos)
+        case "Potencia":
+            return PotenciaPQ(Servicio,Datos)
+        case "Voltajes":
+            return VoltajesPQ(Servicio,Datos)
+        case "Corrientes":
+            return CorrientesPQ(Servicio,Datos)
+        case "Desbalances":
+            return DesbalancesPQ(Servicio,Datos)
+        case "Frecuencia":
+            return FrecuenciaPQ(Servicio,Datos)
+        case "Flicker":
+            return FlickerPQ(Servicio,Datos)
+        case "Armonicos Voltaje":
+            return ArmonicosVoltajePQ(Servicio,Datos)
+        case "Armonicos Corriente":
+            return ArmonicosCorrientePQ(Servicio,Datos)
+        case "Factor K":
+            return FactorKPQ(Servicio,Datos)
+        
 
 @st.cache_resource
 def get_servicio_aws(report_id, _version=1):
@@ -42,7 +58,7 @@ def get_diccionario_rutas(_Servicio,nombre_carpeta):
 
 
    
-def Energia(report_id):
+def PQ(report_id):
 
     Servicio=get_servicio_aws(report_id, _version=1)
     Datos=get_diccionario_rutas(_Servicio=Servicio,nombre_carpeta=report_id)
@@ -55,17 +71,22 @@ def Energia(report_id):
         return st.session_state.mostrar_vista
 
     # Header más pequeño
-    st.markdown("### Energía")
+    st.markdown("### Calidad de Potencia")
     st.caption(f'ID: {report_id}')
     
     # Selector de secciones como tabs horizontales (arriba)
     opciones_vista = [
         "Descripción",
-        "Resumen",
-        "Factores Potencia y Carga",
-        "Energía Activa y Reactiva",
-        "Demandas"
-    
+        "Resumen Sistema",
+        "Potencia",
+        "Voltajes",
+        "Corrientes",
+        "Desbalances",
+        "Frecuencia",
+        "Flicker",
+        "Armonicos Voltaje",
+        "Armonicos Corriente",
+        "Factor K"
     ]
     
     # Obtener el índice de la vista actual
@@ -78,11 +99,16 @@ def Energia(report_id):
     # Mapeo de nombres de UI a nombres internos
     mapeo_vistas = {
         "Descripción": "Descripcion",
-        "Resumen":"Resumen",
-        "Factores Potencia y Carga":"Factores",
-        "Energía Activa y Reactiva":"Energia",
-        "Demandas":"Demandas"
-   
+        "Resumen Sistema": "Resumen Sistema",
+        "Potencia": "Potencia",
+        "Voltajes": "Voltajes",
+        "Corrientes": "Corrientes",
+        "Desbalances": "Desbalances",
+        "Frecuencia": "Frecuencia",
+        "Flicker": "Flicker",
+        "Armonicos Voltaje": "Armonicos Voltaje",
+        "Armonicos Corriente": "Armonicos Corriente",
+        "Factor K":"Factor K"
     }
     
     # Usar botones en dos filas que funcionan como tabs
@@ -152,7 +178,7 @@ def Energia(report_id):
         st.markdown("### Comentarios")
         st.divider()
         
-        rutaComentarios=Datos["Comentarios"]["Energia"]
+        rutaComentarios=Datos["Comentarios"]["PQ"]
         
         # Inicializar clave para el JSON completo
         json_key = f"comentarios_json_{rutaComentarios}"
@@ -199,7 +225,7 @@ def Energia(report_id):
                 st.session_state.mostrar_modal_pdf = True
                 st.rerun()
         
-        # Modal para solicitar email
+        # Modal para solicitar email y fecha
         if st.session_state.mostrar_modal_pdf and not st.session_state.pdf_enviado:
             st.info("📧 Ingrese el correo y la fecha del reporte para enviar el PDF.")
             
@@ -274,22 +300,37 @@ def Energia(report_id):
                                             "report_id": report_id,
                                             "bucket": Servicio.bucket,
                                             "region": Servicio.Region,
-                                            "report_type": "energia",
+                                            "report_type": "pq",
                                             "email": email_pdf.strip(),
                                             "report_date": fecha_formato
                                         }
                                         
-                                        # Obtener URL de la cola PDF desde secrets
-                                        queue_url_pdf = st.secrets["aws"]["sqs_pdf_queue_url"]
+                                        # Validar que el mensaje tenga todos los campos requeridos
+                                        campos_requeridos = ["report_id", "bucket", "region", "report_type", "email", "report_date"]
+                                        campos_faltantes = [campo for campo in campos_requeridos if not mensaje_pdf_sqs.get(campo)]
                                         
-                                        # Enviar mensaje a SQS
-                                        Servicio.enviar_mensaje_sqs(queue_url_pdf, mensaje_pdf_sqs)
-                                        
-                                        # Cerrar modal y marcar como enviado
-                                        st.session_state.mostrar_modal_pdf = False
-                                        st.session_state.pdf_enviado = True
-                                        st.session_state.email_pdf_enviado = email_pdf.strip()
-                                        st.rerun()
+                                        if campos_faltantes:
+                                            st.error(f"❌ Faltan campos requeridos en el mensaje: {', '.join(campos_faltantes)}")
+                                        else:
+                                            # Obtener URL de la cola PDF desde secrets
+                                            queue_url_pdf = st.secrets["aws"]["sqs_pdf_queue_url"]
+                                            
+                                            if not queue_url_pdf:
+                                                st.error("❌ No se encontró la URL de la cola SQS en los secrets. Verifique la configuración.")
+                                            else:
+                                                # Enviar mensaje a SQS
+                                                try:
+                                                    Servicio.enviar_mensaje_sqs(queue_url_pdf, mensaje_pdf_sqs)
+                                                    st.success(f"✅ Mensaje enviado correctamente a SQS para generar PDF")
+                                                    
+                                                    # Cerrar modal y marcar como enviado SOLO si el envío fue exitoso
+                                                    st.session_state.mostrar_modal_pdf = False
+                                                    st.session_state.pdf_enviado = True
+                                                    st.session_state.email_pdf_enviado = email_pdf.strip()
+                                                    st.rerun()
+                                                except Exception as sqs_error:
+                                                    st.error(f"❌ Error al enviar mensaje a SQS: {str(sqs_error)}")
+                                                    raise sqs_error
                         except Exception as e:
                             st.error(f"❌ Error al enviar la solicitud: {str(e)}\n\nPor favor, intente nuevamente.")
 

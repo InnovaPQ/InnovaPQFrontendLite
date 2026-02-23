@@ -291,22 +291,25 @@ def CargarDatos2():
                 # PASO 1: Subir Archivo Principal a "raw_data"
                 # ---------------------------------------------------------
                 file_main = archivos_formulario["main_file"]
-                file_main.seek(0)
-                status.write(f"⬆️ Subiendo Raw Data: {file_main.name}")
-                client.upload_fileobj(file_main, bucket, f"{prefix_raw}{file_main.name}")
+                if file_main is not None:
+                    file_main.seek(0)
+                    status.write(f"⬆️ Subiendo Raw Data: {file_main.name}")
+                    client.upload_fileobj(file_main, bucket, f"{prefix_raw}{file_main.name}")
 
                 # ---------------------------------------------------------
                 # PASO 2: Subir Archivos Físicos a "input"
                 # ---------------------------------------------------------
                 # Diagrama - siempre se guarda como diagrama_unifilar.png
                 file_diag = archivos_formulario["Diagrama Unifilar"]
-                file_diag.seek(0)
-                client.upload_fileobj(file_diag, bucket, f"{prefix_input}diagrama_unifilar.png")
-                
+                if file_diag is not None:
+                    file_diag.seek(0)
+                    client.upload_fileobj(file_diag, bucket, f"{prefix_input}diagrama_unifilar.png")
+                    
                 # Sello - siempre se guarda como stamp.png
                 file_stamp = archivos_formulario["Sello"]
-                file_stamp.seek(0)
-                client.upload_fileobj(file_stamp, bucket, f"{prefix_input}stamp.png")
+                if file_stamp is not None:
+                    file_stamp.seek(0)
+                    client.upload_fileobj(file_stamp, bucket, f"{prefix_input}stamp.png")
 
                 # ---------------------------------------------------------
                 # PASO 3: GENERACIÓN DE EXCELS (Tablas 1, 2, 3, 4)
@@ -393,7 +396,8 @@ def CargarDatos2():
                 
                 # Construir mensaje para SQS usando el helper function
                 # input_key debe incluir la ruta raw_data/ ya que el report_id tiene el prefijo report{uuid}
-                input_key_path = f"{file_main.name}"
+                if file_main is not None:
+                    input_key_path = f"{file_main.name}"
                 
                 # Mapear report_base_url según el modo (dev/prod)
                 mode = st.secrets["aws"].get("mode", "dev")
@@ -415,7 +419,7 @@ def CargarDatos2():
                     email=email_final,  # Usar el email confirmado del modal
                     report_base_url=report_base_url,
                     nominal_voltage=tension_valor,
-                    nominal_voltage_unit=tension_unidad,
+                    nominal_voltage_unit=tension_unidad, # type: ignore
                     profile=datos_formulario["_perfil_tecnico"],
                     skip_llm=skip_llm_value
                 )

@@ -1,43 +1,27 @@
 import streamlit as st
 from Modelos import Comentarios
 from Servicio import Data
-from codigoRed.DescripcionCodigoRed import Descripcion
-from codigoRed.CumplimientoCodigoRed import Cumplimiento
-from codigoRed.ResumenCodigoRed import ResumenCodigoRed
-from codigoRed.PotenciaCodigoRed import PotenciaCodigoRed
-from codigoRed.VoltajesCodigoRed import VoltajesCodigoRed
-from codigoRed.CorrientesCodigoRed import CorrientesCodigoRed
-from codigoRed.DesbalancesCodigoRed import DesbalancesCodigoRed
-from codigoRed.FrecuenciaCodigoRed import FrecuenciaCodigoRed
-from codigoRed.FlickerCodigoRed import FlickerCodigoRed
-from codigoRed.ArmonicosVoltajeCodigoRed import ArmonicosVoltaje
-from codigoRed.ArmonicosCorrienteCodigoRed import ArmonicosCorriente
+from Reporte.Energia.DescripcionEEnergia import Descripcion
+from Reporte.Energia.ResumenEnergia import ResumenEnergia
+from Reporte.Energia.FactoresEnergia import FactoresEnergia
+from Reporte.Energia.ActivaReactivaEnergia import ActivaReactivaEnergia
+from Reporte.Energia.DemandasEnergia import DemandasEnergia
+
 
 def Ventana(MostrarVista,Servicio,Datos):
     match MostrarVista:
         case "Descripcion":
             return Descripcion(Servicio,Datos)
-        case "Cumplimiento":
-            return Cumplimiento(Servicio,Datos)
-        case "Resumen Sistema":
-            return ResumenCodigoRed(Servicio,Datos)
-        case "Potencia":
-            return PotenciaCodigoRed(Servicio,Datos)
-        case "Voltajes":
-            return VoltajesCodigoRed(Servicio,Datos)
-        case "Corrientes":
-            return CorrientesCodigoRed(Servicio,Datos)
-        case "Desbalances":
-            return DesbalancesCodigoRed(Servicio,Datos)
-        case "Frecuencia":
-            return FrecuenciaCodigoRed(Servicio,Datos)
-        case "Flicker":
-            return FlickerCodigoRed(Servicio,Datos)
-        case "Armonicos Voltaje":
-            return ArmonicosVoltaje(Servicio,Datos)
-        case "Armonicos Corriente":
-            return ArmonicosCorriente(Servicio,Datos)
-        
+        case "Resumen":
+            return ResumenEnergia(Servicio,Datos)
+        case "Factores":
+            return FactoresEnergia(Servicio,Datos)
+        case "Energia":
+            return ActivaReactivaEnergia(Servicio,Datos)
+        case "Demandas":
+            return DemandasEnergia(Servicio,Datos)
+
+
 
 @st.cache_resource
 def get_servicio_aws(report_id, _version=1):
@@ -58,7 +42,7 @@ def get_diccionario_rutas(_Servicio,nombre_carpeta):
 
 
    
-def CodigoRed(report_id):
+def Energia(report_id):
 
     Servicio=get_servicio_aws(report_id, _version=1)
     Datos=get_diccionario_rutas(_Servicio=Servicio,nombre_carpeta=report_id)
@@ -71,22 +55,17 @@ def CodigoRed(report_id):
         return st.session_state.mostrar_vista
 
     # Header más pequeño
-    st.markdown("### Código de Red")
+    st.markdown("### Energía")
     st.caption(f'ID: {report_id}')
     
     # Selector de secciones como tabs horizontales (arriba)
     opciones_vista = [
         "Descripción",
-        "Cumplimiento", 
-        "Resumen Sistema",
-        "Potencia",
-        "Voltajes",
-        "Corrientes",
-        "Desbalances",
-        "Frecuencia",
-        "Flicker",
-        "Armonicos Voltaje",
-        "Armonicos Corriente"
+        "Resumen",
+        "Factores Potencia y Carga",
+        "Energía Activa y Reactiva",
+        "Demandas"
+    
     ]
     
     # Obtener el índice de la vista actual
@@ -99,16 +78,11 @@ def CodigoRed(report_id):
     # Mapeo de nombres de UI a nombres internos
     mapeo_vistas = {
         "Descripción": "Descripcion",
-        "Cumplimiento": "Cumplimiento",
-        "Resumen Sistema": "Resumen Sistema",
-        "Potencia": "Potencia",
-        "Voltajes": "Voltajes",
-        "Corrientes": "Corrientes",
-        "Desbalances": "Desbalances",
-        "Frecuencia": "Frecuencia",
-        "Flicker": "Flicker",
-        "Armonicos Voltaje": "Armonicos Voltaje",
-        "Armonicos Corriente": "Armonicos Corriente"
+        "Resumen":"Resumen",
+        "Factores Potencia y Carga":"Factores",
+        "Energía Activa y Reactiva":"Energia",
+        "Demandas":"Demandas"
+   
     }
     
     # Usar botones en dos filas que funcionan como tabs
@@ -178,7 +152,7 @@ def CodigoRed(report_id):
         st.markdown("### Comentarios")
         st.divider()
         
-        rutaComentarios=Datos["Comentarios"]["CodigoRed"]
+        rutaComentarios=Datos["Comentarios"]["Energia"]
         
         # Inicializar clave para el JSON completo
         json_key = f"comentarios_json_{rutaComentarios}"
@@ -225,7 +199,7 @@ def CodigoRed(report_id):
                 st.session_state.mostrar_modal_pdf = True
                 st.rerun()
         
-        # Modal para solicitar email y fecha
+        # Modal para solicitar email
         if st.session_state.mostrar_modal_pdf and not st.session_state.pdf_enviado:
             st.info("📧 Ingrese el correo y la fecha del reporte para enviar el PDF.")
             
@@ -300,7 +274,7 @@ def CodigoRed(report_id):
                                             "report_id": report_id,
                                             "bucket": Servicio.bucket,
                                             "region": Servicio.Region,
-                                            "report_type": "codigo_red",
+                                            "report_type": "energia",
                                             "email": email_pdf.strip(),
                                             "report_date": fecha_formato
                                         }
