@@ -6,9 +6,10 @@ from Reporte.Energia.ResumenEnergia import ResumenEnergia
 from Reporte.Energia.FactoresEnergia import FactoresEnergia
 from Reporte.Energia.ActivaReactivaEnergia import ActivaReactivaEnergia
 from Reporte.Energia.DemandasEnergia import DemandasEnergia
+from Reporte.Energia.cfe import CFE
 
 
-def Ventana(MostrarVista,Servicio,Datos):
+def Ventana(MostrarVista,Servicio,Datos,cfe):
     match MostrarVista:
         case "Descripcion":
             return Descripcion(Servicio,Datos)
@@ -20,6 +21,9 @@ def Ventana(MostrarVista,Servicio,Datos):
             return ActivaReactivaEnergia(Servicio,Datos)
         case "Demandas":
             return DemandasEnergia(Servicio,Datos)
+        case "cfe":
+            return CFE(Servicio,Datos,cfe)
+
 
 
 
@@ -42,7 +46,7 @@ def get_diccionario_rutas(_Servicio,nombre_carpeta):
 
 
    
-def Energia(report_id):
+def Energia(report_id,cfe):
 
     Servicio=get_servicio_aws(report_id, _version=1)
     Datos=get_diccionario_rutas(_Servicio=Servicio,nombre_carpeta=report_id)
@@ -55,7 +59,6 @@ def Energia(report_id):
         return st.session_state.mostrar_vista
 
     # Header más pequeño
-    st.markdown("### Energía")
     st.caption(f'ID: {report_id}')
     
     # Selector de secciones como tabs horizontales (arriba)
@@ -64,7 +67,8 @@ def Energia(report_id):
         "Resumen",
         "Factores Potencia y Carga",
         "Energía Activa y Reactiva",
-        "Demandas"
+        "Demandas",
+        "CFE"
     
     ]
     
@@ -81,7 +85,8 @@ def Energia(report_id):
         "Resumen":"Resumen",
         "Factores Potencia y Carga":"Factores",
         "Energía Activa y Reactiva":"Energia",
-        "Demandas":"Demandas"
+        "Demandas":"Demandas",
+        "CFE":"cfe"
    
     }
     
@@ -116,7 +121,7 @@ def Energia(report_id):
             
             if st.button(
                 opcion,
-                key=f"tab_btn_{idx}",
+                key=f"tab_btn_{idx}_Energia",
                 use_container_width=True,
                 type=button_type
             ):
@@ -133,7 +138,7 @@ def Energia(report_id):
                 
                 if st.button(
                     opcion,
-                    key=f"tab_btn_{mitad + idx}",
+                    key=f"tab_btn_{mitad + idx}_Energia",
                     use_container_width=True,
                     type=button_type
                 ):
@@ -145,25 +150,24 @@ def Energia(report_id):
     # Renderizar el contenido abajo basado en la vista seleccionada
     # Convertir el nombre de UI al nombre interno usando el mapeo
     vista_interna = mapeo_vistas.get(st.session_state.mostrar_vista, st.session_state.mostrar_vista)
-    Ventana(MostrarVista=vista_interna, Servicio=Servicio, Datos=Datos)
+    Ventana(MostrarVista=vista_interna, Servicio=Servicio, Datos=Datos,cfe=cfe)
 
     # Sidebar para comentarios (Notas, Importante, Precaución)
     with st.sidebar:
-        st.markdown("### Comentarios")
-        st.divider()
+        st.markdown("# Comentarios Reporte Energía")
         
         rutaComentarios=Datos["Comentarios"]["Energia"]
         
         # Inicializar clave para el JSON completo
         json_key = f"comentarios_json_{rutaComentarios}"
 
-        SeccionNotas=Comentarios(titulo="Notas",seccion_json="nota",rutaDatos=rutaComentarios,servicio=Servicio)
+        SeccionNotas=Comentarios(titulo="Notas",seccion_json="nota",rutaDatos=rutaComentarios,servicio=Servicio,id_categoria="Energia")
         json_actualizado = SeccionNotas.render()
 
-        SeccionImportante=Comentarios(titulo="Importante",seccion_json="importante",rutaDatos=rutaComentarios,servicio=Servicio)
+        SeccionImportante=Comentarios(titulo="Importante",seccion_json="importante",rutaDatos=rutaComentarios,servicio=Servicio,id_categoria="Energia")
         json_actualizado = SeccionImportante.render()
 
-        SeccionPrecaucion=Comentarios(titulo="Precaución",seccion_json="precaucion",rutaDatos=rutaComentarios,servicio=Servicio)
+        SeccionPrecaucion=Comentarios(titulo="Precaución",seccion_json="precaucion",rutaDatos=rutaComentarios,servicio=Servicio,id_categoria="Energia")
         json_actualizado = SeccionPrecaucion.render()
         
         # Obtener el JSON completo actualizado del session_state
@@ -174,145 +178,4 @@ def Energia(report_id):
         
         st.divider()
         
-        # Inicializar estado del modal
-        if 'mostrar_modal_pdf' not in st.session_state:
-            st.session_state.mostrar_modal_pdf = False
-        if 'pdf_enviado' not in st.session_state:
-            st.session_state.pdf_enviado = False
-        if 'email_pdf_enviado' not in st.session_state:
-            st.session_state.email_pdf_enviado = ""
-        
-        # Mostrar mensaje de éxito si ya se envió
-        if st.session_state.pdf_enviado:
-            st.success(f"✅ **Solicitud enviada**\n\n"
-                      f"PDF será enviado a:\n"
-                      f"**{st.session_state.email_pdf_enviado}**\n\n"
-                      f"📬 Recibirá el correo en los próximos minutos.")
-            if st.button("Cerrar", key="cerrar_mensaje_pdf"):
-                st.session_state.pdf_enviado = False
-                st.session_state.email_pdf_enviado = ""
-                st.rerun()
-        
-        # Botón para abrir modal
-        if not st.session_state.pdf_enviado:
-            if st.button("Generar PDF con comentarios actualizados", use_container_width=True):
-                st.session_state.mostrar_modal_pdf = True
-                st.rerun()
-        
-        # Modal para solicitar email
-        if st.session_state.mostrar_modal_pdf and not st.session_state.pdf_enviado:
-            st.info("📧 Ingrese el correo y la fecha del reporte para enviar el PDF.")
-            
-            with st.form(key="form_modal_pdf", clear_on_submit=False):
-                email_pdf = st.text_input(
-                    "Correo Electrónico",
-                    placeholder="ejemplo@correo.com",
-                    type="default"
-                )
-                
-                fecha_reporte = st.date_input(
-                    "Fecha del Reporte",
-                    value=None,
-                    help="Seleccione la fecha que aparecerá en el reporte PDF"
-                )
-                
-                col_btn1, col_btn2 = st.columns(2)
-                with col_btn1:
-                    enviar_btn = st.form_submit_button("✅ Enviar", use_container_width=True, type="primary")
-                with col_btn2:
-                    cancelar_btn = st.form_submit_button("❌ Cancelar", use_container_width=True)
-                
-                if cancelar_btn:
-                    st.session_state.mostrar_modal_pdf = False
-                    st.rerun()
-                
-                if enviar_btn:
-                    # Validar email
-                    if not email_pdf or email_pdf.strip() == "":
-                        st.error("Por favor, ingrese un correo electrónico válido.")
-                    elif "@" not in email_pdf:
-                        st.error("Por favor, ingrese un correo electrónico válido.")
-                    elif fecha_reporte is None:
-                        st.error("Por favor, seleccione la fecha del reporte.")
-                    else:
-                        try:
-                            # Validar que hay al menos 1 item en cada sección
-                            if json_key not in st.session_state:
-                                st.error("No se encontraron comentarios para guardar. Por favor, recargue la página.")
-                            else:
-                                json_para_guardar = st.session_state[json_key]
-                                
-                                # Validar que solo la sección "nota" tenga al menos 1 item
-                                # "importante" y "precaución" son opcionales según los prompts del LLM
-                                errores_validacion = []
-                                
-                                # Solo validar "nota" como requerida
-                                contenido_nota = json_para_guardar.get("nota", [])
-                                if not isinstance(contenido_nota, list) or len(contenido_nota) == 0:
-                                    errores_validacion.append(f"La sección 'nota' debe tener al menos un item.")
-                                
-                                if errores_validacion:
-                                    st.error("❌ " + " ".join(errores_validacion))
-                                else:
-                                    # Verificar que las variables estén disponibles
-                                    if not rutaComentarios:
-                                        st.error("No se pudo obtener la ruta de comentarios.")
-                                    elif not json_para_guardar:
-                                        st.error("No hay datos de comentarios para guardar.")
-                                    else:
-                                        # Guardar comentarios actualizados en S3
-                                        Servicio.GuardarDatos(
-                                            json_para_guardar,
-                                            rutaComentarios
-                                        )
-                                        
-                                        # Construir mensaje para SQS PDF
-                                        # Convertir fecha a formato YYYY-MM-DD
-                                        fecha_formato = fecha_reporte.strftime("%Y-%m-%d")
-                                        
-                                        mensaje_pdf_sqs = {
-                                            "report_id": report_id,
-                                            "bucket": Servicio.bucket,
-                                            "region": Servicio.Region,
-                                            "report_type": "energia",
-                                            "email": email_pdf.strip(),
-                                            "report_date": fecha_formato
-                                        }
-                                        
-                                        # Obtener URL de la cola PDF desde secrets
-                                        queue_url_pdf = st.secrets["aws"]["sqs_pdf_queue_url"]
-                                        
-                                        # Enviar mensaje a SQS
-                                        Servicio.enviar_mensaje_sqs(queue_url_pdf, mensaje_pdf_sqs)
-                                        
-                                        # Cerrar modal y marcar como enviado
-                                        st.session_state.mostrar_modal_pdf = False
-                                        st.session_state.pdf_enviado = True
-                                        st.session_state.email_pdf_enviado = email_pdf.strip()
-                                        st.rerun()
-                        except Exception as e:
-                            st.error(f"❌ Error al enviar la solicitud: {str(e)}\n\nPor favor, intente nuevamente.")
-
-    # El contenido ya se renderiza dentro de las tabs arriba
-    # No necesitamos renderizarlo de nuevo aquí
-
-                
-
-
-            
-        # En una v2, estos valores por defecto vendrían de un .txt o .json en S3
-        #st.subheader("Notas")
-        #comentario_Notas = st.text_area(label="",value="El voltaje se mantiene...")
-        #st.subheader("Tips")
-        #comentario_Tips = st.text_area(label="",value="Se detectaron picos de armónicos...")
-        #st.subheader("Importante")
-        #comentario_Importante = st.text_area(label="",value= "Se recomienda la instalación de...")
-        #st.subheader("Precacución")
-        #comentario_Precaucion = st.text_area(label="",value= "Cuidado con...")
-        #st.subheader("Advertencia")
-        #comentario_Advertencia = st.text_area(label="",value= "Accion inmediata")
-
-        # --- 3. Generar PDF ---
-        #st.header("Generar PDF")
-            
-        
+ 

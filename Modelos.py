@@ -59,7 +59,7 @@ class Imagenes:
     
 
 class Comentarios:
-    def __init__(self, titulo, seccion_json, rutaDatos, servicio):
+    def __init__(self, titulo, seccion_json, rutaDatos, servicio, id_categoria):
         """
         Args:
             titulo_ui (str): El título que aparecerá arriba del text_area (ej: "Notas Técnicas").
@@ -71,6 +71,7 @@ class Comentarios:
         self.seccion_json = seccion_json
         self.ruta_archivo_s3 = rutaDatos
         self.servicio = servicio
+        self.id_categoria=id_categoria
 
     def render(self):
         # 1. Mostrar el título en la UI
@@ -164,7 +165,7 @@ class Comentarios:
             st.session_state[json_key] = data_dict
             
             # Botón para agregar nueva nota
-            if st.button(f"➕ Agregar nueva {self.seccion_json}", key=f"add_{self.seccion_json}"):
+            if st.button(f"➕ Agregar nueva {self.seccion_json}", key=f"add_{self.seccion_json} {self.id_categoria}"):
                 nuevo_item = {
                     "title": f"Nueva {self.seccion_json}",
                     "content": "",

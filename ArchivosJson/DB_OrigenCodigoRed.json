@@ -111,6 +111,22 @@
         "Energia":"out_llm/energia.json",
         "PQ":"out_llm/pq.json"
 
+    },
+    "CFE":{
+        "ImportesAnuales":"CFE/categorical/cfe_desglose_importes_anuales.png",
+        "PorcentajesConceptos":"CFE/categorical/cfe_desglose_porcentajes_conceptos.png",
+        "CostoFacturacion":"CFE/series_tiempo/cfe_costo_facturacion.png",
+        "DemandaBloqueHorario":"CFE/series_tiempo/cfe_demanda_bloque_horario.png",
+        "CargoCapacidad":"CFE/series_tiempo/cfe_demanda_cargo_capacidad.png",
+        "CargoDistribucion":"CFE/series_tiempo/cfe_demanda_cargo_distribucion.png",
+        "CargosFacturacion":"CFE/series_tiempo/cfe_desglose_cargos_facturacion.png",
+        "EnergiaBloqueHorario":"CFE/series_tiempo/cfe_energia_bloque_horario.png",
+        "ReactivaTotal":"CFE/series_tiempo/cfe_energia_reactiva_total_mensual.png",
+        "EnergiaTotal":"CFE/series_tiempo/cfe_energia_total_mensual.png",
+        "FactorCarga":"CFE/series_tiempo/cfe_factor_carga.png",
+        "FactorPotencia":"CFE/series_tiempo/cfe_factor_potencia.png",
+        "TarifaAllIn":"CFE/series_tiempo/cfe_tarifa_all_in.png"
+
     }
 
 }   

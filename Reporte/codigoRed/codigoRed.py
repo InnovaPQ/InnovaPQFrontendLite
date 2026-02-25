@@ -71,7 +71,6 @@ def CodigoRed(report_id):
         return st.session_state.mostrar_vista
 
     # Header más pequeño
-    st.markdown("### Código de Red")
     st.caption(f'ID: {report_id}')
     
     # Selector de secciones como tabs horizontales (arriba)
@@ -175,21 +174,20 @@ def CodigoRed(report_id):
 
     # Sidebar para comentarios (Notas, Importante, Precaución)
     with st.sidebar:
-        st.markdown("### Comentarios")
-        st.divider()
+        st.markdown("# Comentarios Reporte Codigo Red")
         
         rutaComentarios=Datos["Comentarios"]["CodigoRed"]
         
         # Inicializar clave para el JSON completo
         json_key = f"comentarios_json_{rutaComentarios}"
 
-        SeccionNotas=Comentarios(titulo="Notas",seccion_json="nota",rutaDatos=rutaComentarios,servicio=Servicio)
+        SeccionNotas=Comentarios(titulo="Notas",seccion_json="nota",rutaDatos=rutaComentarios,servicio=Servicio,id_categoria="CodigoRed")
         json_actualizado = SeccionNotas.render()
 
-        SeccionImportante=Comentarios(titulo="Importante",seccion_json="importante",rutaDatos=rutaComentarios,servicio=Servicio)
+        SeccionImportante=Comentarios(titulo="Importante",seccion_json="importante",rutaDatos=rutaComentarios,servicio=Servicio,id_categoria="CodigoRed")
         json_actualizado = SeccionImportante.render()
 
-        SeccionPrecaucion=Comentarios(titulo="Precaución",seccion_json="precaucion",rutaDatos=rutaComentarios,servicio=Servicio)
+        SeccionPrecaucion=Comentarios(titulo="Precaución",seccion_json="precaucion",rutaDatos=rutaComentarios,servicio=Servicio,id_categoria="CodigoRed")
         json_actualizado = SeccionPrecaucion.render()
         
         # Obtener el JSON completo actualizado del session_state
@@ -200,125 +198,7 @@ def CodigoRed(report_id):
         
         st.divider()
         
-        # Inicializar estado del modal
-        if 'mostrar_modal_pdf' not in st.session_state:
-            st.session_state.mostrar_modal_pdf = False
-        if 'pdf_enviado' not in st.session_state:
-            st.session_state.pdf_enviado = False
-        if 'email_pdf_enviado' not in st.session_state:
-            st.session_state.email_pdf_enviado = ""
         
-        # Mostrar mensaje de éxito si ya se envió
-        if st.session_state.pdf_enviado:
-            st.success(f"✅ **Solicitud enviada**\n\n"
-                      f"PDF será enviado a:\n"
-                      f"**{st.session_state.email_pdf_enviado}**\n\n"
-                      f"📬 Recibirá el correo en los próximos minutos.")
-            if st.button("Cerrar", key="cerrar_mensaje_pdf"):
-                st.session_state.pdf_enviado = False
-                st.session_state.email_pdf_enviado = ""
-                st.rerun()
-        
-        # Botón para abrir modal
-        if not st.session_state.pdf_enviado:
-            if st.button("Generar PDF con comentarios actualizados", use_container_width=True):
-                st.session_state.mostrar_modal_pdf = True
-                st.rerun()
-        
-        # Modal para solicitar email y fecha
-        if st.session_state.mostrar_modal_pdf and not st.session_state.pdf_enviado:
-            st.info("📧 Ingrese el correo y la fecha del reporte para enviar el PDF.")
-            
-            with st.form(key="form_modal_pdf", clear_on_submit=False):
-                email_pdf = st.text_input(
-                    "Correo Electrónico",
-                    placeholder="ejemplo@correo.com",
-                    type="default"
-                )
-                
-                fecha_reporte = st.date_input(
-                    "Fecha del Reporte",
-                    value=None,
-                    help="Seleccione la fecha que aparecerá en el reporte PDF"
-                )
-                
-                col_btn1, col_btn2 = st.columns(2)
-                with col_btn1:
-                    enviar_btn = st.form_submit_button("✅ Enviar", use_container_width=True, type="primary")
-                with col_btn2:
-                    cancelar_btn = st.form_submit_button("❌ Cancelar", use_container_width=True)
-                
-                if cancelar_btn:
-                    st.session_state.mostrar_modal_pdf = False
-                    st.rerun()
-                
-                if enviar_btn:
-                    # Validar email
-                    if not email_pdf or email_pdf.strip() == "":
-                        st.error("Por favor, ingrese un correo electrónico válido.")
-                    elif "@" not in email_pdf:
-                        st.error("Por favor, ingrese un correo electrónico válido.")
-                    elif fecha_reporte is None:
-                        st.error("Por favor, seleccione la fecha del reporte.")
-                    else:
-                        try:
-                            # Validar que hay al menos 1 item en cada sección
-                            if json_key not in st.session_state:
-                                st.error("No se encontraron comentarios para guardar. Por favor, recargue la página.")
-                            else:
-                                json_para_guardar = st.session_state[json_key]
-                                
-                                # Validar que solo la sección "nota" tenga al menos 1 item
-                                # "importante" y "precaución" son opcionales según los prompts del LLM
-                                errores_validacion = []
-                                
-                                # Solo validar "nota" como requerida
-                                contenido_nota = json_para_guardar.get("nota", [])
-                                if not isinstance(contenido_nota, list) or len(contenido_nota) == 0:
-                                    errores_validacion.append(f"La sección 'nota' debe tener al menos un item.")
-                                
-                                if errores_validacion:
-                                    st.error("❌ " + " ".join(errores_validacion))
-                                else:
-                                    # Verificar que las variables estén disponibles
-                                    if not rutaComentarios:
-                                        st.error("No se pudo obtener la ruta de comentarios.")
-                                    elif not json_para_guardar:
-                                        st.error("No hay datos de comentarios para guardar.")
-                                    else:
-                                        # Guardar comentarios actualizados en S3
-                                        Servicio.GuardarDatos(
-                                            json_para_guardar,
-                                            rutaComentarios
-                                        )
-                                        
-                                        # Construir mensaje para SQS PDF
-                                        # Convertir fecha a formato YYYY-MM-DD
-                                        fecha_formato = fecha_reporte.strftime("%Y-%m-%d")
-                                        
-                                        mensaje_pdf_sqs = {
-                                            "report_id": report_id,
-                                            "bucket": Servicio.bucket,
-                                            "region": Servicio.Region,
-                                            "report_type": "codigo_red",
-                                            "email": email_pdf.strip(),
-                                            "report_date": fecha_formato
-                                        }
-                                        
-                                        # Obtener URL de la cola PDF desde secrets
-                                        queue_url_pdf = st.secrets["aws"]["sqs_pdf_queue_url"]
-                                        
-                                        # Enviar mensaje a SQS
-                                        Servicio.enviar_mensaje_sqs(queue_url_pdf, mensaje_pdf_sqs)
-                                        
-                                        # Cerrar modal y marcar como enviado
-                                        st.session_state.mostrar_modal_pdf = False
-                                        st.session_state.pdf_enviado = True
-                                        st.session_state.email_pdf_enviado = email_pdf.strip()
-                                        st.rerun()
-                        except Exception as e:
-                            st.error(f"❌ Error al enviar la solicitud: {str(e)}\n\nPor favor, intente nuevamente.")
-
     # El contenido ya se renderiza dentro de las tabs arriba
     # No necesitamos renderizarlo de nuevo aquí
 
