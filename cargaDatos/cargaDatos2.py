@@ -32,7 +32,10 @@ def build_sqs_message(
     nominal_voltage: float,
     nominal_voltage_unit: str,
     profile: str,
-    skip_llm: bool = True
+    cfe_file: str,
+    enable_cfe_charts: bool,
+    skip_llm: bool = True,
+    
 ) -> dict:
     """
     Construye el mensaje SQS para el procesamiento de reportes.
@@ -65,7 +68,10 @@ def build_sqs_message(
         "nominal_voltage": nominal_voltage,
         "nominal_voltage_unit": nominal_voltage_unit,
         "profile": profile,
-        "skip_llm": skip_llm
+        "skip_llm": skip_llm,
+        "enable_cfe_charts": enable_cfe_charts,
+        "cfe_file": cfe_file
+
     }
 
 def CargarDatos2():
@@ -172,7 +178,9 @@ def CargarDatos2():
             
             st.subheader("Carpeta: raw_data")
             archivos_formulario["main_file"] = st.file_uploader("Archivo Principal (CSV/PQDIF/XLSX)", type=["csv", "pqd", "pqdif", "xlsx"])
-            
+            with st.expander("📁 Habilitar archivo Comisión Federal de Electricidad (Opcional)"):
+                archivos_formulario["CFE"] = st.file_uploader("Archivo Comisión Federal de Electricidad (CSV) (Opcional)", type=["csv", "xlsx"])
+
             st.divider()
             st.subheader("Carpeta: input")
             col_files_1, col_files_2 = st.columns(2)
@@ -181,9 +189,12 @@ def CargarDatos2():
             with col_files_2:
                 archivos_formulario["Sello"] = st.file_uploader("Sello (Stamp)", type=["png", "jpg"])
 
-        st.divider()
+            st.divider()
+            
+            
+        
         submit_button = st.form_submit_button("🚀 Iniciar Procesamiento", use_container_width=True, type="primary")
-
+    
     # ==========================================
     # 2. LÓGICA DE PROCESAMIENTO Y CARGA
     # ==========================================
@@ -219,6 +230,12 @@ def CargarDatos2():
                 value=st.session_state.skip_llm,
                 help="Si está activado, se generarán solo las tablas y gráficos sin los reportes de análisis LLM. Por defecto está activado (se omite LLM)."
             )
+
+            # Mensajes sobre archivo de la CFE
+            if archivos_formulario["CFE"] is not None:
+                st.warning("⚠️ Este cliente se procesará con archivo de la  Comisión Federal de Electricidad")
+            else:
+                st.warning("⚠️ Este cliente se procesará sin archivo de la Comisión Federal de Electricidad.")
             
             col_btn1, col_btn2 = st.columns(2)
             with col_btn1:
@@ -257,7 +274,7 @@ def CargarDatos2():
             if not valor or str(valor).strip() == "": errores.append(campo)
         
         for nombre_archivo, objeto_archivo in archivos_formulario.items():
-            if objeto_archivo is None: errores.append(nombre_archivo)
+            if nombre_archivo != "CFE" and objeto_archivo is None: errores.append(nombre_archivo)
 
         if errores:
             st.error(f"❌ Faltan los siguientes campos obligatorios: {', '.join(errores)}")
@@ -282,6 +299,10 @@ def CargarDatos2():
         prefix_raw = f"{prefix_root}raw_data/"
         prefix_input = f"{prefix_root}input/"
 
+        # C. Nombre archivo CFE
+        CFE_file_Name="raw_cfe_data.csv"
+
+
         client = Servicio.client_s3
         bucket = Servicio.bucket
 
@@ -291,10 +312,16 @@ def CargarDatos2():
                 # PASO 1: Subir Archivo Principal a "raw_data"
                 # ---------------------------------------------------------
                 file_main = archivos_formulario["main_file"]
+                if archivos_formulario["CFE"] is not None:
+                    file_cfe=archivos_formulario["CFE"]
                 if file_main is not None:
                     file_main.seek(0)
                     status.write(f"⬆️ Subiendo Raw Data: {file_main.name}")
                     client.upload_fileobj(file_main, bucket, f"{prefix_raw}{file_main.name}")
+                    if file_cfe is not None:
+                        cfe_agregado=True
+                        status.write(f"⬆️ Subiendo CFE: {CFE_file_Name}")
+                        client.upload_fileobj(file_cfe, bucket, f"{prefix_raw}{CFE_file_Name}")
 
                 # ---------------------------------------------------------
                 # PASO 2: Subir Archivos Físicos a "input"
@@ -310,6 +337,7 @@ def CargarDatos2():
                 if file_stamp is not None:
                     file_stamp.seek(0)
                     client.upload_fileobj(file_stamp, bucket, f"{prefix_input}stamp.png")
+
 
                 # ---------------------------------------------------------
                 # PASO 3: GENERACIÓN DE EXCELS (Tablas 1, 2, 3, 4)
@@ -421,7 +449,10 @@ def CargarDatos2():
                     nominal_voltage=tension_valor,
                     nominal_voltage_unit=tension_unidad, # type: ignore
                     profile=datos_formulario["_perfil_tecnico"],
-                    skip_llm=skip_llm_value
+                    skip_llm=skip_llm_value,
+                    enable_cfe_charts=cfe_agregado,
+                    cfe_file=CFE_file_Name
+
                 )
                 
                 # Obtener URL de la cola desde secrets

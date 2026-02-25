@@ -9,6 +9,7 @@ __pycache__/
 venv/
 env/
 *.env
+.innovavenv
 
 # === Archivos de Dependencias ===
 # A menudo es mejor ignorar la carpeta de instalación de pip
