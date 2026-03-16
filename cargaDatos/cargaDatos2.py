@@ -132,19 +132,19 @@ def CargarDatos2():
                 
                 # Tensión Suministro
                 cc1, cc2 = st.columns([0.7, 0.3])
-                t_sum = cc1.text_input("Tensión Suministro (Valor)")
+                t_sum = cc1.number_input(label="Tensión Suministro (Valor)",value=None)
                 u_sum = cc2.selectbox("U.", ["V", "kV"], key="usum")
                 datos_formulario["Tensión de suministro"] = f"{t_sum} {u_sum}" if t_sum else ""
 
                 # Demanda
                 cc1, cc2 = st.columns([0.7, 0.3])
-                dem = cc1.text_input("Demanda Contratada (Valor)")
+                dem = cc1.number_input("Demanda Contratada (Valor)",value=None)
                 u_dem = cc2.selectbox("U.", ["kW", "MW", "W"], key="udem")
                 datos_formulario["Demanda contratada"] = f"{dem} {u_dem}" if dem else ""
 
                 # Corriente Demanda
                 cc1, cc2 = st.columns([0.7, 0.3])
-                i_dem = cc1.text_input("Corriente demanda máx (Valor)")
+                i_dem = cc1.number_input("Corriente demanda máx (Valor)",value=None)
                 u_idem = cc2.selectbox("U.", ["A", "kA"], key="uidem")
                 datos_formulario["Corriente demanda máxima contratada"] = f"{i_dem} {u_idem}" if i_dem else ""
 
@@ -153,13 +153,13 @@ def CargarDatos2():
                 
                 # Tensión Punto
                 cc1, cc2 = st.columns([0.7, 0.3])
-                t_pto = cc1.text_input("Tensión Punto (Valor)")
+                t_pto = cc1.number_input("Tensión Punto (Valor)",value=None)
                 u_pto = cc2.selectbox("U.", ["V", "kV"], key="upto")
                 datos_formulario["Tensión de punto de medición"] = f"{t_pto} {u_pto}" if t_pto else ""
 
                 # Corriente CC
                 cc1, cc2 = st.columns([0.7, 0.3])
-                icc = cc1.text_input("Corriente CC (Valor)")
+                icc = cc1.number_input("Corriente CC (Valor)",value=None)
                 u_icc = cc2.selectbox("U.", ["kA", "A"], key="uicc")
                 datos_formulario["Corriente de corto circuito"] = f"{icc} {u_icc}" if icc else ""
 
