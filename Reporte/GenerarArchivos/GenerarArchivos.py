@@ -1,377 +1,171 @@
-#--------------------------CodigoRed-------------
-# # Inicializar estado del modal
-# if 'mostrar_modal_pdf' not in st.session_state:
-# st.session_state.mostrar_modal_pdf = False
-# if 'pdf_enviado' not in st.session_state:
-# st.session_state.pdf_enviado = False
-# if 'email_pdf_enviado' not in st.session_state:
-# st.session_state.email_pdf_enviado = ""
+import streamlit as st
+from Servicio import Data
 
-# # Mostrar mensaje de éxito si ya se envió
-# if st.session_state.pdf_enviado:
-# st.success(f"✅ **Solicitud enviada**\n\n"
-# f"PDF será enviado a:\n"
-# f"**{st.session_state.email_pdf_enviado}**\n\n"
-# f"📬 Recibirá el correo en los próximos minutos.")
-# if st.button("Cerrar", key="cerrar_mensaje_pdf"):
-# st.session_state.pdf_enviado = False
-# st.session_state.email_pdf_enviado = ""
-# st.rerun()
 
-# # Botón para abrir modal
-# if not st.session_state.pdf_enviado:
-# if st.button("Generar PDF con comentarios actualizados", use_container_width=True,key=f"{report_id}_CodigoRed"):
-# st.session_state.mostrar_modal_pdf = True
-# st.rerun()
+@st.cache_resource
+def get_servicio_aws(report_id, _version=1):
+    """
+    Obtiene la instancia del servicio AWS.
+    _version se usa para invalidar el caché cuando cambia el código.
+    """
+    print("Conectando a AWS...")
+    return Data(report_id)
 
-# # Modal para solicitar email y fecha
-# if st.session_state.mostrar_modal_pdf and not st.session_state.pdf_enviado:
-# st.info("📧 Ingrese el correo y la fecha del reporte para enviar el PDF.")
+@st.cache_data
+def get_diccionario_rutas(_Servicio,nombre_carpeta):
+    print("Escaneando bucket...")
+    return _Servicio.obtener_rutas_actualizadas()
 
-# with st.form(key="form_modal_pdf", clear_on_submit=False):
-# email_pdf = st.text_input(
-# "Correo Electrónico",
-# placeholder="ejemplo@correo.com",
-# type="default"
-# )
 
-# fecha_reporte = st.date_input(
-# "Fecha del Reporte",
-# value=None,
-# help="Seleccione la fecha que aparecerá en el reporte PDF"
-# )
 
-# col_btn1, col_btn2 = st.columns(2)
-# with col_btn1:
-# enviar_btn = st.form_submit_button("✅ Enviar", use_container_width=True, type="primary")
-# with col_btn2:
-# cancelar_btn = st.form_submit_button("❌ Cancelar", use_container_width=True)
+def modal_generacion_pdf_unificado(report_id, servicio, datos_rutas):
+    """
+    Muestra el botón y el modal para enviar TODOS los reportes juntos.
+    
+    Args:
+        report_id (str): El ID único del reporte general.
+        servicio (Servicio): Instancia de tu clase de conexión a AWS.
+        datos_rutas (dict): El diccionario con las rutas originales a S3. 
+                            Ej: Datos["Comentarios"]
+    """
+    
+    # 1. Inicializar estado del modal
+    if 'mostrar_modal_pdf' not in st.session_state:
+        st.session_state.mostrar_modal_pdf = False
+    if 'pdf_enviado' not in st.session_state:
+        st.session_state.pdf_enviado = False
+    if 'email_pdf_enviado' not in st.session_state:
+        st.session_state.email_pdf_enviado = ""
 
-# if cancelar_btn:
-# st.session_state.mostrar_modal_pdf = False
-# st.rerun()
+    # 2. Mostrar mensaje de éxito si ya se envió
+    if st.session_state.pdf_enviado:
+        st.success(f"✅ **Solicitud enviada**\n\n"
+                   f"Los PDFs serán enviados a:\n"
+                   f"**{st.session_state.email_pdf_enviado}**\n\n"
+                   f"📬 Recibirá el correo en los próximos minutos.")
+        if st.button("Cerrar", key="cerrar_mensaje_pdf_global"):
+            st.session_state.pdf_enviado = False
+            st.session_state.email_pdf_enviado = ""
+            st.rerun()
+        return # Detenemos la ejecución aquí si ya se envió
 
-# if enviar_btn:
-# # Validar email
-# if not email_pdf or email_pdf.strip() == "":
-#     st.error("Por favor, ingrese un correo electrónico válido.")
-# elif "@" not in email_pdf:
-#     st.error("Por favor, ingrese un correo electrónico válido.")
-# elif fecha_reporte is None:
-#     st.error("Por favor, seleccione la fecha del reporte.")
-# else:
-#     try:
-#         # Validar que hay al menos 1 item en cada sección
-#         if json_key not in st.session_state:
-#             st.error("No se encontraron comentarios para guardar. Por favor, recargue la página.")
-#         else:
-#             json_para_guardar = st.session_state[json_key]
+    # 3. Botón para abrir modal
+    if not st.session_state.pdf_enviado:
+        if st.button("Generar .ZIP de todos los reportes", use_container_width=True, type="primary"):
+            st.session_state.mostrar_modal_pdf = True
+            st.rerun()
+
+    # 4. Modal para solicitar email, fecha y CFE
+    if st.session_state.mostrar_modal_pdf and not st.session_state.pdf_enviado:
+        st.info("📧 Ingrese los datos para enviar los reportes unificados.")
+        
+        with st.form(key="form_modal_pdf_unificado", clear_on_submit=False):
+            email_pdf = st.text_input(
+                "Correo Electrónico",
+                placeholder="ejemplo@correo.com",
+            )
             
-#             # Validar que solo la sección "nota" tenga al menos 1 item
-#             # "importante" y "precaución" son opcionales según los prompts del LLM
-#             errores_validacion = []
+            fecha_reporte = st.date_input(
+                "Fecha del Reporte",
+                value=None,
+                help="Seleccione la fecha que aparecerá en los reportes PDF"
+            )
             
-#             # Solo validar "nota" como requerida
-#             contenido_nota = json_para_guardar.get("nota", [])
-#             if not isinstance(contenido_nota, list) or len(contenido_nota) == 0:
-#                 errores_validacion.append(f"La sección 'nota' debe tener al menos un item.")
+            # Nuevo campo basado en el payload del ingeniero
+            enable_cfe = st.checkbox(
+                "Habilitar gráficas CFE (enable_cfe_charts)", 
+                value=True
+            )
             
-#             if errores_validacion:
-#                 st.error("❌ " + " ".join(errores_validacion))
-#             else:
-#                 # Verificar que las variables estén disponibles
-#                 if not rutaComentarios:
-#                     st.error("No se pudo obtener la ruta de comentarios.")
-#                 elif not json_para_guardar:
-#                     st.error("No hay datos de comentarios para guardar.")
-#                 else:
-#                     # Guardar comentarios actualizados en S3
-#                     Servicio.GuardarDatos(
-#                         json_para_guardar,
-#                         rutaComentarios
-#                     )
-                    
-#                     # Construir mensaje para SQS PDF
-#                     # Convertir fecha a formato YYYY-MM-DD
-#                     fecha_formato = fecha_reporte.strftime("%Y-%m-%d")
-                    
-#                     mensaje_pdf_sqs = {
-#                         "report_id": report_id,
-#                         "bucket": Servicio.bucket,
-#                         "region": Servicio.Region,
-#                         "report_type": "codigo_red",
-#                         "email": email_pdf.strip(),
-#                         "report_date": fecha_formato
-#                     }
-                    
-#                     # Obtener URL de la cola PDF desde secrets
-#                     queue_url_pdf = st.secrets["aws"]["sqs_pdf_queue_url"]
-                    
-#                     # Enviar mensaje a SQS
-#                     Servicio.enviar_mensaje_sqs(queue_url_pdf, mensaje_pdf_sqs)
-                    
-#                     # Cerrar modal y marcar como enviado
-#                     st.session_state.mostrar_modal_pdf = False
-#                     st.session_state.pdf_enviado = True
-#                     st.session_state.email_pdf_enviado = email_pdf.strip()
-#                     st.rerun()
-#     except Exception as e:
-#         st.error(f"❌ Error al enviar la solicitud: {str(e)}\n\nPor favor, intente nuevamente.")
+            col_btn1, col_btn2 = st.columns(2)
+            with col_btn1:
+                enviar_btn = st.form_submit_button("✅ Enviar Todo", use_container_width=True, type="primary")
+            with col_btn2:
+                cancelar_btn = st.form_submit_button("❌ Cancelar", use_container_width=True)
+
+            if cancelar_btn:
+                st.session_state.mostrar_modal_pdf = False
+                st.rerun()
+
+            if enviar_btn:
+                # Validaciones básicas
+                if not email_pdf or "@" not in email_pdf:
+                    st.error("Por favor, ingrese un correo electrónico válido.")
+                elif fecha_reporte is None:
+                    st.error("Por favor, seleccione la fecha del reporte.")
+                else:
+                    try:
+                        # --- PASO A: RECOLECTAR Y GUARDAR EN S3 ---
+                        rutas = {
+                            "codigo_red": datos_rutas["CodigoRed"],
+                            "energia": datos_rutas["Energia"],
+                            "pq": datos_rutas["PQ"]
+                        }
+                        
+                        archivos_guardados = 0
+                        
+                        # Iterar sobre las 3 rutas para guardar los cambios en S3
+                        for tipo, ruta_s3 in rutas.items():
+                            json_key = f"comentarios_json_{ruta_s3}"
+                            
+                            # Solo guardamos si el usuario visitó la pantalla y se cargó el JSON en memoria
+                            if json_key in st.session_state:
+                                json_para_guardar = st.session_state[json_key]
+                                
+                                # Validación de la sección 'nota' (requerida por tu lógica anterior)
+                                contenido_nota = json_para_guardar.get("nota", [])
+                                if not isinstance(contenido_nota, list) or len(contenido_nota) == 0:
+                                    st.error(f"❌ La sección 'nota' en {tipo} debe tener al menos un item.")
+                                    st.stop() # Detiene la ejecución si hay error
+                                
+                                # Guardar en S3 usando tu servicio
+                                servicio.GuardarDatos(json_para_guardar, ruta_s3)
+                                archivos_guardados += 1
+                        
+                        if archivos_guardados == 0:
+                            st.warning("No se encontraron comentarios cargados en memoria para guardar. Asegúrate de visitar las pestañas de los reportes primero.")
+                            st.stop()
+
+                        # --- PASO B: CONSTRUIR Y ENVIAR PAYLOAD A SQS ---
+                        fecha_formato = fecha_reporte.strftime("%Y-%m-%d")
+                        
+                        # Payload unificado según las instrucciones del ingeniero de nube
+                        mensaje_pdf_sqs = {
+                            "report_id": report_id,
+                            "bucket": servicio.bucket,
+                            "region": servicio.Region,
+                            "report_types": ["codigo_red", "pq", "energia"],
+                            "email": email_pdf.strip(),
+                            "report_date": fecha_formato,
+                            "enable_cfe_charts": enable_cfe
+                        }
+                        
+                        # Obtener URL de la cola y enviar
+                        queue_url_pdf = st.secrets["aws"]["sqs_pdf_queue_url"]
+                        servicio.enviar_mensaje_sqs(queue_url_pdf, mensaje_pdf_sqs)
+                        
+                        # Cerrar modal y marcar como enviado
+                        st.session_state.mostrar_modal_pdf = False
+                        st.session_state.pdf_enviado = True
+                        st.session_state.email_pdf_enviado = email_pdf.strip()
+                        st.rerun()
+                        
+                    except Exception as e:
+                        st.error(f"❌ Error al procesar la solicitud: {str(e)}")
 
 
-#--------------------Energia--------------------
+def GenerarArchivos(report_id):
 
-# # Inicializar estado del modal
-#         if 'mostrar_modal_pdf' not in st.session_state:
-#             st.session_state.mostrar_modal_pdf = False
-#         if 'pdf_enviado' not in st.session_state:
-#             st.session_state.pdf_enviado = False
-#         if 'email_pdf_enviado' not in st.session_state:
-#             st.session_state.email_pdf_enviado = ""
-        
-#         # Mostrar mensaje de éxito si ya se envió
-#         if st.session_state.pdf_enviado:
-#             st.success(f"✅ **Solicitud enviada**\n\n"
-#                       f"PDF será enviado a:\n"
-#                       f"**{st.session_state.email_pdf_enviado}**\n\n"
-#                       f"📬 Recibirá el correo en los próximos minutos.")
-#             if st.button("Cerrar", key="cerrar_mensaje_pdf_energia"):
-#                 st.session_state.pdf_enviado = False
-#                 st.session_state.email_pdf_enviado = ""
-#                 st.rerun()
-        
-#         # Botón para abrir modal
-#         if not st.session_state.pdf_enviado:
-#             if st.button("Generar PDF con comentarios actualizados", use_container_width=True,key=f"{report_id}_Energia"):
-#                 st.session_state.mostrar_modal_pdf = True
-#                 st.rerun()
-        
-#         # Modal para solicitar email
-#         if st.session_state.mostrar_modal_pdf and not st.session_state.pdf_enviado:
-#             st.info("📧 Ingrese el correo y la fecha del reporte para enviar el PDF.")
-            
-#             with st.form(key="form_modal_pdf", clear_on_submit=False):
-#                 email_pdf = st.text_input(
-#                     "Correo Electrónico",
-#                     placeholder="ejemplo@correo.com",
-#                     type="default"
-#                 )
-                
-#                 fecha_reporte = st.date_input(
-#                     "Fecha del Reporte",
-#                     value=None,
-#                     help="Seleccione la fecha que aparecerá en el reporte PDF"
-#                 )
-                
-#                 col_btn1, col_btn2 = st.columns(2)
-#                 with col_btn1:
-#                     enviar_btn = st.form_submit_button("✅ Enviar", use_container_width=True, type="primary")
-#                 with col_btn2:
-#                     cancelar_btn = st.form_submit_button("❌ Cancelar", use_container_width=True)
-                
-#                 if cancelar_btn:
-#                     st.session_state.mostrar_modal_pdf = False
-#                     st.rerun()
-                
-#                 if enviar_btn:
-#                     # Validar email
-#                     if not email_pdf or email_pdf.strip() == "":
-#                         st.error("Por favor, ingrese un correo electrónico válido.")
-#                     elif "@" not in email_pdf:
-#                         st.error("Por favor, ingrese un correo electrónico válido.")
-#                     elif fecha_reporte is None:
-#                         st.error("Por favor, seleccione la fecha del reporte.")
-#                     else:
-#                         try:
-#                             # Validar que hay al menos 1 item en cada sección
-#                             if json_key not in st.session_state:
-#                                 st.error("No se encontraron comentarios para guardar. Por favor, recargue la página.")
-#                             else:
-#                                 json_para_guardar = st.session_state[json_key]
-                                
-#                                 # Validar que solo la sección "nota" tenga al menos 1 item
-#                                 # "importante" y "precaución" son opcionales según los prompts del LLM
-#                                 errores_validacion = []
-                                
-#                                 # Solo validar "nota" como requerida
-#                                 contenido_nota = json_para_guardar.get("nota", [])
-#                                 if not isinstance(contenido_nota, list) or len(contenido_nota) == 0:
-#                                     errores_validacion.append(f"La sección 'nota' debe tener al menos un item.")
-                                
-#                                 if errores_validacion:
-#                                     st.error("❌ " + " ".join(errores_validacion))
-#                                 else:
-#                                     # Verificar que las variables estén disponibles
-#                                     if not rutaComentarios:
-#                                         st.error("No se pudo obtener la ruta de comentarios.")
-#                                     elif not json_para_guardar:
-#                                         st.error("No hay datos de comentarios para guardar.")
-#                                     else:
-#                                         # Guardar comentarios actualizados en S3
-#                                         Servicio.GuardarDatos(
-#                                             json_para_guardar,
-#                                             rutaComentarios
-#                                         )
-                                        
-#                                         # Construir mensaje para SQS PDF
-#                                         # Convertir fecha a formato YYYY-MM-DD
-#                                         fecha_formato = fecha_reporte.strftime("%Y-%m-%d")
-                                        
-#                                         mensaje_pdf_sqs = {
-#                                             "report_id": report_id,
-#                                             "bucket": Servicio.bucket,
-#                                             "region": Servicio.Region,
-#                                             "report_type": "energia",
-#                                             "email": email_pdf.strip(),
-#                                             "report_date": fecha_formato
-#                                         }
-                                        
-#                                         # Obtener URL de la cola PDF desde secrets
-#                                         queue_url_pdf = st.secrets["aws"]["sqs_pdf_queue_url"]
-                                        
-#                                         # Enviar mensaje a SQS
-#                                         Servicio.enviar_mensaje_sqs(queue_url_pdf, mensaje_pdf_sqs)
-                                        
-#                                         # Cerrar modal y marcar como enviado
-#                                         st.session_state.mostrar_modal_pdf = False
-#                                         st.session_state.pdf_enviado = True
-#                                         st.session_state.email_pdf_enviado = email_pdf.strip()
-#                                         st.rerun()
-#                         except Exception as e:
-#                             st.error(f"❌ Error al enviar la solicitud: {str(e)}\n\nPor favor, intente nuevamente.")
+       Servicio=get_servicio_aws(report_id, _version=1)
+       Datos=get_diccionario_rutas(_Servicio=Servicio,nombre_carpeta=report_id)
 
+       # --- AQUÍ VA NUESTRA NUEVA LÓGICA UNIFICADA ---
+       st.header("📁 Gestión de Archivos y Reportes")
+       st.info("Genera el PDF unificado. Asegúrate de haber guardado tus comentarios en las otras pestañas.")
 
-#---------------------------Codigo Red-----------------------
-       # Inicializar estado del modal
-        # if 'mostrar_modal_pdf' not in st.session_state:
-        #     st.session_state.mostrar_modal_pdf = False
-        # if 'pdf_enviado' not in st.session_state:
-        #     st.session_state.pdf_enviado = False
-        # if 'email_pdf_enviado' not in st.session_state:
-        #     st.session_state.email_pdf_enviado = ""
-        
-        # # Mostrar mensaje de éxito si ya se envió
-        # if st.session_state.pdf_enviado:
-        #     st.success(f"✅ **Solicitud enviada**\n\n"
-        #               f"PDF será enviado a:\n"
-        #               f"**{st.session_state.email_pdf_enviado}**\n\n"
-        #               f"📬 Recibirá el correo en los próximos minutos.")
-        #     if st.button("Cerrar", key="cerrar_mensaje_pdf_pq"):
-        #         st.session_state.pdf_enviado = False
-        #         st.session_state.email_pdf_enviado = ""
-        #         st.rerun()
-        
-        # # Botón para abrir modal
-        # if not st.session_state.pdf_enviado:
-        #     if st.button("Generar PDF con comentarios actualizados", use_container_width=True,key=f"{report_id}_PQ"):
-        #         st.session_state.mostrar_modal_pdf = True
-        #         st.rerun()
-        
-        # # Modal para solicitar email y fecha
-        # if st.session_state.mostrar_modal_pdf and not st.session_state.pdf_enviado:
-        #     st.info("📧 Ingrese el correo y la fecha del reporte para enviar el PDF.")
-            
-        #     with st.form(key="form_modal_pdf", clear_on_submit=False):
-        #         email_pdf = st.text_input(
-        #             "Correo Electrónico",
-        #             placeholder="ejemplo@correo.com",
-        #             type="default"
-        #         )
-                
-        #         fecha_reporte = st.date_input(
-        #             "Fecha del Reporte",
-        #             value=None,
-        #             help="Seleccione la fecha que aparecerá en el reporte PDF"
-        #         )
-                
-        #         col_btn1, col_btn2 = st.columns(2)
-        #         with col_btn1:
-        #             enviar_btn = st.form_submit_button("✅ Enviar", use_container_width=True, type="primary")
-        #         with col_btn2:
-        #             cancelar_btn = st.form_submit_button("❌ Cancelar", use_container_width=True)
-                
-        #         if cancelar_btn:
-        #             st.session_state.mostrar_modal_pdf = False
-        #             st.rerun()
-                
-        #         if enviar_btn:
-        #             # Validar email
-        #             if not email_pdf or email_pdf.strip() == "":
-        #                 st.error("Por favor, ingrese un correo electrónico válido.")
-        #             elif "@" not in email_pdf:
-        #                 st.error("Por favor, ingrese un correo electrónico válido.")
-        #             elif fecha_reporte is None:
-        #                 st.error("Por favor, seleccione la fecha del reporte.")
-        #             else:
-        #                 try:
-        #                     # Validar que hay al menos 1 item en cada sección
-        #                     if json_key not in st.session_state:
-        #                         st.error("No se encontraron comentarios para guardar. Por favor, recargue la página.")
-        #                     else:
-        #                         json_para_guardar = st.session_state[json_key]
-                                
-        #                         # Validar que solo la sección "nota" tenga al menos 1 item
-        #                         # "importante" y "precaución" son opcionales según los prompts del LLM
-        #                         errores_validacion = []
-                                
-        #                         # Solo validar "nota" como requerida
-        #                         contenido_nota = json_para_guardar.get("nota", [])
-        #                         if not isinstance(contenido_nota, list) or len(contenido_nota) == 0:
-        #                             errores_validacion.append(f"La sección 'nota' debe tener al menos un item.")
-                                
-        #                         if errores_validacion:
-        #                             st.error("❌ " + " ".join(errores_validacion))
-        #                         else:
-        #                             # Verificar que las variables estén disponibles
-        #                             if not rutaComentarios:
-        #                                 st.error("No se pudo obtener la ruta de comentarios.")
-        #                             elif not json_para_guardar:
-        #                                 st.error("No hay datos de comentarios para guardar.")
-        #                             else:
-        #                                 # Guardar comentarios actualizados en S3
-        #                                 Servicio.GuardarDatos(
-        #                                     json_para_guardar,
-        #                                     rutaComentarios
-        #                                 )
-                                        
-        #                                 # Construir mensaje para SQS PDF
-        #                                 # Convertir fecha a formato YYYY-MM-DD
-        #                                 fecha_formato = fecha_reporte.strftime("%Y-%m-%d")
-                                        
-        #                                 mensaje_pdf_sqs = {
-        #                                     "report_id": report_id,
-        #                                     "bucket": Servicio.bucket,
-        #                                     "region": Servicio.Region,
-        #                                     "report_type": "pq",
-        #                                     "email": email_pdf.strip(),
-        #                                     "report_date": fecha_formato
-        #                                 }
-                                        
-        #                                 # Validar que el mensaje tenga todos los campos requeridos
-        #                                 campos_requeridos = ["report_id", "bucket", "region", "report_type", "email", "report_date"]
-        #                                 campos_faltantes = [campo for campo in campos_requeridos if not mensaje_pdf_sqs.get(campo)]
-                                        
-        #                                 if campos_faltantes:
-        #                                     st.error(f"❌ Faltan campos requeridos en el mensaje: {', '.join(campos_faltantes)}")
-        #                                 else:
-        #                                     # Obtener URL de la cola PDF desde secrets
-        #                                     queue_url_pdf = st.secrets["aws"]["sqs_pdf_queue_url"]
-                                            
-        #                                     if not queue_url_pdf:
-        #                                         st.error("❌ No se encontró la URL de la cola SQS en los secrets. Verifique la configuración.")
-        #                                     else:
-        #                                         # Enviar mensaje a SQS
-        #                                         try:
-        #                                             Servicio.enviar_mensaje_sqs(queue_url_pdf, mensaje_pdf_sqs)
-        #                                             st.success(f"✅ Mensaje enviado correctamente a SQS para generar PDF")
-                                                    
-        #                                             # Cerrar modal y marcar como enviado SOLO si el envío fue exitoso
-        #                                             st.session_state.mostrar_modal_pdf = False
-        #                                             st.session_state.pdf_enviado = True
-        #                                             st.session_state.email_pdf_enviado = email_pdf.strip()
-        #                                             st.rerun()
-        #                                         except Exception as sqs_error:
-        #                                             st.error(f"❌ Error al enviar mensaje a SQS: {str(sqs_error)}")
-        #                                             raise sqs_error
-        #                 except Exception as e:
-        #                     st.error(f"❌ Error al enviar la solicitud: {str(e)}\n\nPor favor, intente nuevamente.")
+       # Asumiendo que ya tienes definidas tus variables report_id, Servicio y Datos
+       modal_generacion_pdf_unificado(
+       report_id=report_id,
+       servicio=Servicio,
+       datos_rutas=Datos["Comentarios"]
+       )

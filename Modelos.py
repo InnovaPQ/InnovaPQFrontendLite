@@ -58,142 +58,128 @@ class Imagenes:
             st.image(image=imagen) 
     
 
+
 class Comentarios:
     def __init__(self, titulo, seccion_json, rutaDatos, servicio, id_categoria):
-        """
-        Args:
-            titulo_ui (str): El título que aparecerá arriba del text_area (ej: "Notas Técnicas").
-            seccion_json (str): La llave del JSON a leer (ej: 'nota', 'importante', 'executive_summary').
-            ruta_archivo_s3 (str): La ruta completa en S3 donde está este JSON de reporte.
-            servicio_datos (Data): La instancia de tu servicio de conexión.
-        """
         self.titulo_ui = titulo
         self.seccion_json = seccion_json
         self.ruta_archivo_s3 = rutaDatos
         self.servicio = servicio
-        self.id_categoria=id_categoria
+        self.id_categoria = id_categoria
+        
+        # Claves únicas centralizadas
+        # Clave maestra para el JSON completo de este archivo
+        self.json_key = f"comentarios_json_{self.ruta_archivo_s3}"
+        # Prefijo para garantizar que los widgets de esta instancia no colisionen
+        self.widget_prefix = f"wg_{self.id_categoria}_{self.seccion_json}"
 
-    def render(self):
-        # 1. Mostrar el título en la UI
-        st.subheader(self.titulo_ui)
-
-        # 2. Cargar JSON completo una vez y guardarlo en session_state
-        json_key = f"comentarios_json_{self.ruta_archivo_s3}"
-        if json_key not in st.session_state:
+    def _cargar_datos(self):
+        """Descarga y almacena el JSON en session_state una sola vez."""
+        if self.json_key not in st.session_state:
             bytes_data = self.servicio.descargar_archivo_s3(self.ruta_archivo_s3)
             
             if not bytes_data:
                 st.error("No se pudo cargar el archivo de comentarios.")
-                return None
+                return False
             
             try:
                 data_dict = json.loads(bytes_data.decode('utf-8'))
-                st.session_state[json_key] = data_dict
+                st.session_state[self.json_key] = data_dict
                 st.session_state[f"ruta_comentarios_{self.ruta_archivo_s3}"] = self.ruta_archivo_s3
+                return True
             except json.JSONDecodeError:
                 st.error("El archivo descargado no tiene un formato JSON válido.")
-                return None
+                return False
             except Exception as e:
                 st.error(f"Error procesando comentarios: {e}")
-                return None
-        
-        # 3. Obtener el JSON completo del session_state
-        data_dict = st.session_state[json_key]
-        
-        # 4. Extraer la sección solicitada
-        contenido_raw = data_dict.get(self.seccion_json, None)
+                return False
+        return True
 
-        if contenido_raw is None:
+    # --- CALLBACKS DE ESTADO ---
+    def _cb_actualizar_texto_lista(self, idx, widget_key):
+        nuevo_texto = st.session_state[widget_key]
+        st.session_state[self.json_key][self.seccion_json][idx]['content'] = nuevo_texto
+
+    def _cb_eliminar_item(self, idx):
+        st.session_state[self.json_key][self.seccion_json].pop(idx)
+
+    def _cb_agregar_item(self):
+        nuevo_item = {
+            "title": f"Nueva {self.seccion_json}",
+            "content": "",
+            "priority": self.seccion_json,
+            "references": []
+        }
+        st.session_state[self.json_key][self.seccion_json].append(nuevo_item)
+
+    def _cb_actualizar_texto_plano(self, widget_key):
+        st.session_state[self.json_key][self.seccion_json] = st.session_state[widget_key]
+
+    # --- RENDERIZADORES ESPECÍFICOS ---
+    def _renderizar_lista(self, contenido):
+        for idx, item in enumerate(contenido):
+            with st.container():
+                titulo_original = item.get('title', f'Item {idx + 1}')
+                st.caption(f"📝 {titulo_original}")
+                
+                content_key = f"{self.widget_prefix}_content_{idx}"
+                
+                st.text_area(
+                    label=f"Contenido {idx}",
+                    value=item.get('content', ''),
+                    height=150,
+                    key=content_key,
+                    label_visibility="collapsed",
+                    on_change=self._cb_actualizar_texto_lista,
+                    args=(idx, content_key)
+                )
+                
+                if len(contenido) > 1:
+                    btn_del_key = f"{self.widget_prefix}_del_{idx}"
+                    st.button(
+                        "🗑️ Eliminar", 
+                        key=btn_del_key, 
+                        use_container_width=True,
+                        on_click=self._cb_eliminar_item,
+                        args=(idx,)
+                    )
+            st.divider()
+        
+        st.button(
+            f"➕ Agregar nueva {self.seccion_json}", 
+            key=f"{self.widget_prefix}_add",
+            on_click=self._cb_agregar_item
+        )
+
+    def _renderizar_texto(self, contenido):
+        texto_key = f"{self.widget_prefix}_text"
+        st.text_area(
+            label="Edición de texto",
+            value=contenido,
+            height=500,
+            key=texto_key,
+            label_visibility="collapsed",
+            on_change=self._cb_actualizar_texto_plano,
+            args=(texto_key,)
+        )
+
+    # --- MÉTODO PRINCIPAL ---
+    def render(self):
+        st.subheader(self.titulo_ui)
+
+        if not self._cargar_datos():
+            return None 
+        
+        data_dict = st.session_state[self.json_key]
+        contenido_actual = data_dict.get(self.seccion_json, None)
+
+        if contenido_actual is None:
             st.warning(f"No se encontró la sección '{self.seccion_json}' en el reporte.")
             return None
 
-        # 5. Si es una lista (nota, importante, precaucion), renderizar items individuales
-        if isinstance(contenido_raw, list):
-            items_editados = []
-            
-            # Renderizar cada item individualmente
-            for idx, item in enumerate(contenido_raw):
-                with st.container():
-                    # Mostrar el título como referencia (solo lectura)
-                    titulo_original = item.get('title', f'Item {idx + 1}')
-                    st.caption(f"📝 {titulo_original}")
-                    
-                    # Text area para editar solo el content
-                    content_key = f"{self.seccion_json}_content_{idx}"
-                    content_editado = st.text_area(
-                        label=f"Contenido del item {idx + 1}",
-                        value=item.get('content', ''),
-                        height=150,
-                        key=content_key,
-                        label_visibility="collapsed"
-                    )
-                    
-                    # Botón para eliminar (solo si hay más de 1 item)
-                    if len(contenido_raw) > 1:
-                        button_key = f"delete_{self.seccion_json}_{idx}"
-                        # Estilo CSS para hacer el botón rojo
-                        st.markdown(f"""
-                            <style>
-                                button[data-testid*="{button_key}"] {{
-                                    background-color: #ff4444 !important;
-                                    color: white !important;
-                                    border-color: #cc0000 !important;
-                                }}
-                                button[data-testid*="{button_key}"]:hover {{
-                                    background-color: #cc0000 !important;
-                                }}
-                            </style>
-                        """, unsafe_allow_html=True)
-                        
-                        if st.button("Eliminar", key=button_key, 
-                                   type="secondary", use_container_width=True,
-                                   help="Eliminar esta nota"):
-                            # Eliminar el item de la lista
-                            contenido_raw.pop(idx)
-                            st.session_state[json_key][self.seccion_json] = contenido_raw
-                            st.rerun()
-                    
-                    # Guardar el item editado
-                    item_editado = item.copy()
-                    item_editado['content'] = content_editado
-                    items_editados.append(item_editado)
-                
-                st.divider()
-            
-            # Actualizar el JSON en session_state con los cambios
-            data_dict[self.seccion_json] = items_editados
-            st.session_state[json_key] = data_dict
-            
-            # Botón para agregar nueva nota
-            if st.button(f"➕ Agregar nueva {self.seccion_json}", key=f"add_{self.seccion_json} {self.id_categoria}"):
-                nuevo_item = {
-                    "title": f"Nueva {self.seccion_json}",
-                    "content": "",
-                    "priority": self.seccion_json,
-                    "references": []
-                }
-                contenido_raw.append(nuevo_item)
-                st.session_state[json_key][self.seccion_json] = contenido_raw
-                st.rerun()
-            
-            # Retornar el JSON completo actualizado
-            return st.session_state[json_key]
-        
-        # 6. Si es texto plano (executive_summary, technical_summary)
-        elif isinstance(contenido_raw, str):
-            texto_key = f"{self.seccion_json}_text"
-            texto_editado = st.text_area(
-                label="",
-                value=contenido_raw,
-                height=500,
-                key=texto_key,
-                label_visibility="collapsed"
-            )
-            # Actualizar en session_state
-            data_dict[self.seccion_json] = texto_editado
-            st.session_state[json_key] = data_dict
-            return st.session_state[json_key]
-        
+        if isinstance(contenido_actual, list):
+            self._renderizar_lista(contenido_actual)
+        elif isinstance(contenido_actual, str):
+            self._renderizar_texto(contenido_actual)
         else:
-            st.warning(f"Tipo de contenido no soportado para edición: {type(contenido_raw)}")
-            return None
+            st.warning(f"Tipo de contenido no soportado para edición: {type(contenido_actual)}")

@@ -152,30 +152,43 @@ def Energia(report_id,cfe):
     vista_interna = mapeo_vistas.get(st.session_state.mostrar_vista, st.session_state.mostrar_vista)
     Ventana(MostrarVista=vista_interna, Servicio=Servicio, Datos=Datos,cfe=cfe)
 
-    # Sidebar para comentarios (Notas, Importante, Precaución)
+    # Sidebar para comentarios (Notas, Importante, Precaución) de Energía
     with st.sidebar:
         st.markdown("# Comentarios Reporte Energía")
         
-        rutaComentarios=Datos["Comentarios"]["Energia"]
+        rutaComentarios = Datos["Comentarios"]["Energia"]
         
-        # Inicializar clave para el JSON completo
-        json_key = f"comentarios_json_{rutaComentarios}"
+        # Renderizamos las secciones directamente. 
+        # La clase ya se encarga de guardar todo en st.session_state por debajo.
+        Comentarios(
+            titulo="Notas",
+            seccion_json="nota",
+            rutaDatos=rutaComentarios,
+            servicio=Servicio,
+            id_categoria="Energia"
+        ).render()
 
-        SeccionNotas=Comentarios(titulo="Notas",seccion_json="nota",rutaDatos=rutaComentarios,servicio=Servicio,id_categoria="Energia")
-        json_actualizado = SeccionNotas.render()
+        Comentarios(
+            titulo="Importante",
+            seccion_json="importante",
+            rutaDatos=rutaComentarios,
+            servicio=Servicio,
+            id_categoria="Energia"
+        ).render()
 
-        SeccionImportante=Comentarios(titulo="Importante",seccion_json="importante",rutaDatos=rutaComentarios,servicio=Servicio,id_categoria="Energia")
-        json_actualizado = SeccionImportante.render()
-
-        SeccionPrecaucion=Comentarios(titulo="Precaución",seccion_json="precaucion",rutaDatos=rutaComentarios,servicio=Servicio,id_categoria="Energia")
-        json_actualizado = SeccionPrecaucion.render()
-        
-        # Obtener el JSON completo actualizado del session_state
-        if json_key in st.session_state:
-            json_completo_final = st.session_state[json_key]
-        else:
-            json_completo_final = json_actualizado
+        Comentarios(
+            titulo="Precaución",
+            seccion_json="precaucion",
+            rutaDatos=rutaComentarios,
+            servicio=Servicio,
+            id_categoria="Energia"
+        ).render()
         
         st.divider()
+        
+        # (Opcional) Indicador visual
+        json_key = f"comentarios_json_{rutaComentarios}"
+        if json_key in st.session_state:
+            st.caption("💾 Comentarios en memoria temporal")
         
  
