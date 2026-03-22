@@ -34,7 +34,13 @@ def build_sqs_message(
     profile: str,
     cfe_file: str,
     enable_cfe_charts: bool,
-    skip_llm: bool = True,
+    demand_kw:float,
+    supply_voltage:float,
+    supply_voltage_unit:str,
+    icc:float,
+    il:float,
+    skip_llm: bool = True
+
     
 ) -> dict:
     """
@@ -64,13 +70,19 @@ def build_sqs_message(
         "dpi": 200,
         "output_mode": "s3",
         "email": email,
+        "report_types": ["codigo_red", "pq", "energia"],
         "report_base_url": report_base_url,
         "nominal_voltage": nominal_voltage,
         "nominal_voltage_unit": nominal_voltage_unit,
         "profile": profile,
         "skip_llm": skip_llm,
         "enable_cfe_charts": enable_cfe_charts,
-        "cfe_file": cfe_file
+        "cfe_file": cfe_file,
+        "demand_kw":demand_kw,
+        "supply_voltage":supply_voltage,
+        "supply_voltage_unit":supply_voltage_unit,
+        "icc":icc,
+        "il":il
 
     }
 
@@ -135,19 +147,21 @@ def CargarDatos2():
                 t_sum = cc1.number_input(label="Tensión Suministro (Valor)",value=None)
                 u_sum = cc2.selectbox("U.", ["V", "kV"], key="usum")
                 datos_formulario["Tensión de suministro"] = f"{t_sum} {u_sum}" if t_sum else ""
-
+                datos_formulario["Tension suministro valor"]=t_sum
+                datos_formulario["Tension suministro unidad"]=u_sum
                 # Demanda
                 cc1, cc2 = st.columns([0.7, 0.3])
                 dem = cc1.number_input("Demanda Contratada (Valor)",value=None)
                 u_dem = cc2.selectbox("U.", ["kW", "MW", "W"], key="udem")
                 datos_formulario["Demanda contratada"] = f"{dem} {u_dem}" if dem else ""
+                datos_formulario["Demanda Valor"]=dem
 
                 # Corriente Demanda
                 cc1, cc2 = st.columns([0.7, 0.3])
                 i_dem = cc1.number_input("Corriente demanda máx (Valor)",value=None)
                 u_idem = cc2.selectbox("U.", ["A", "kA"], key="uidem")
                 datos_formulario["Corriente demanda máxima contratada"] = f"{i_dem} {u_idem}" if i_dem else ""
-
+                datos_formulario["Corriente demanda máxima contratada valor"]=i_dem
             with col_b:
                 datos_formulario["Transformador del tablero"] = st.text_input("Transformador (Capacidad/Tipo)")
                 
@@ -162,6 +176,7 @@ def CargarDatos2():
                 icc = cc1.number_input("Corriente CC (Valor)",value=None)
                 u_icc = cc2.selectbox("U.", ["kA", "A"], key="uicc")
                 datos_formulario["Corriente de corto circuito"] = f"{icc} {u_icc}" if icc else ""
+                datos_formulario["Corriente de corto circuito valor"]=icc
 
             st.divider()
             cd1, cd2 = st.columns(2)
@@ -322,7 +337,8 @@ def CargarDatos2():
                         cfe_agregado=True
                         status.write(f"⬆️ Subiendo CFE: {CFE_file_Name}")
                         client.upload_fileobj(file_cfe, bucket, f"{prefix_raw}{CFE_file_Name}")
-
+                
+                
                 # ---------------------------------------------------------
                 # PASO 2: Subir Archivos Físicos a "input"
                 # ---------------------------------------------------------
@@ -437,6 +453,30 @@ def CargarDatos2():
                 
                 # Obtener skip_llm del session state (default: True - skip LLM by default)
                 skip_llm_value = st.session_state.get("skip_llm", True)
+
+                #Inicializar variables dinamicas de sqs
+
+                if datos_formulario["Demanda Valor"] is not None:
+                    demand_kw= datos_formulario["Demanda Valor"]
+                else:
+                    demand_kw=0.0
+
+                if datos_formulario["Tension suministro valor"] is not None:
+                    supply_voltage= datos_formulario["Tension suministro valor"]
+                    supply_voltage_unit= datos_formulario["Tension suministro unidad"]
+                else:
+                    supply_voltage=0.0
+                    supply_voltage_unit=""
+
+                if datos_formulario["Corriente demanda máxima contratada valor"] is not None:
+                    il=datos_formulario["Corriente demanda máxima contratada valor"]
+                else:
+                    il=0.0
+
+                if datos_formulario["Corriente de corto circuito valor"] is not None:
+                    icc=datos_formulario["Corriente de corto circuito valor"]
+                else:
+                    icc=0.0
                 
                 # Construir mensaje usando la función helper (Single Responsibility)
                 mensaje_sqs = build_sqs_message(
@@ -451,7 +491,12 @@ def CargarDatos2():
                     profile=datos_formulario["_perfil_tecnico"],
                     skip_llm=skip_llm_value,
                     enable_cfe_charts=cfe_agregado,
-                    cfe_file=CFE_file_Name
+                    cfe_file=CFE_file_Name,
+                    demand_kw=demand_kw,
+                    supply_voltage= supply_voltage,
+                    supply_voltage_unit= supply_voltage_unit,
+                    icc= icc,
+                    il= il
 
                 )
                 

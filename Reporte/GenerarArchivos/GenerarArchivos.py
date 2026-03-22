@@ -18,17 +18,10 @@ def get_diccionario_rutas(_Servicio,nombre_carpeta):
 
 
 
-def modal_generacion_pdf_unificado(report_id, servicio, datos_rutas):
+def modal_generacion_pdf_unificado(report_id, servicio, datos_rutas, cfe):
     """
     Muestra el botón y el modal para enviar TODOS los reportes juntos.
-    
-    Args:
-        report_id (str): El ID único del reporte general.
-        servicio (Servicio): Instancia de tu clase de conexión a AWS.
-        datos_rutas (dict): El diccionario con las rutas originales a S3. 
-                            Ej: Datos["Comentarios"]
     """
-    
     # 1. Inicializar estado del modal
     if 'mostrar_modal_pdf' not in st.session_state:
         st.session_state.mostrar_modal_pdf = False
@@ -70,12 +63,38 @@ def modal_generacion_pdf_unificado(report_id, servicio, datos_rutas):
                 value=None,
                 help="Seleccione la fecha que aparecerá en los reportes PDF"
             )
+
+            st.divider()
             
-            # Nuevo campo basado en el payload del ingeniero
-            enable_cfe = st.checkbox(
-                "Habilitar gráficas CFE (enable_cfe_charts)", 
-                value=True
-            )
+            # Campos de generación de reporte
+            opciones_reportes = {
+                "Reporte de código red": "codigo_red",
+                "Reporte PQ": "pq",
+                "Reporte de energía": "energia"
+            }
+
+            st.write("Selecciona los reportes a generar:")
+
+            report_types = []
+            for texto_mostrar, valor_guardar in opciones_reportes.items():
+                if st.checkbox(texto_mostrar, value=False):
+                    report_types.append(valor_guardar)
+
+            st.divider()
+            
+            # --- CORRECCIÓN CRÍTICA AQUÍ ---
+            # Inicializamos enable_cfe en False por defecto para evitar el NameError
+            # cuando cfe no es "true" y se intenta construir el payload más abajo.
+            enable_cfe = False 
+            
+            if cfe == "true":
+                st.write("Seleccione para habilitar el reporte del CFE:")
+                enable_cfe = st.checkbox(
+                    "Habilitar gráficas CFE", 
+                    value=True
+                )
+            else:
+                st.write("Reporte del CFE no disponible para este cliente.")
             
             col_btn1, col_btn2 = st.columns(2)
             with col_btn1:
@@ -88,11 +107,14 @@ def modal_generacion_pdf_unificado(report_id, servicio, datos_rutas):
                 st.rerun()
 
             if enviar_btn:
-                # Validaciones básicas
+                # --- AQUÍ INTEGRAMOS LA VALIDACIÓN DE LOS CHECKBOXES ---
                 if not email_pdf or "@" not in email_pdf:
                     st.error("Por favor, ingrese un correo electrónico válido.")
                 elif fecha_reporte is None:
                     st.error("Por favor, seleccione la fecha del reporte.")
+                elif len(report_types) == 0:
+                    # Esta alerta bloquea el envío y le avisa al usuario
+                    st.error("⚠️ ALERTA! Seleccione al menos un tipo de reporte para continuar.")
                 else:
                     try:
                         # --- PASO A: RECOLECTAR Y GUARDAR EN S3 ---
@@ -104,21 +126,17 @@ def modal_generacion_pdf_unificado(report_id, servicio, datos_rutas):
                         
                         archivos_guardados = 0
                         
-                        # Iterar sobre las 3 rutas para guardar los cambios en S3
                         for tipo, ruta_s3 in rutas.items():
                             json_key = f"comentarios_json_{ruta_s3}"
                             
-                            # Solo guardamos si el usuario visitó la pantalla y se cargó el JSON en memoria
                             if json_key in st.session_state:
                                 json_para_guardar = st.session_state[json_key]
                                 
-                                # Validación de la sección 'nota' (requerida por tu lógica anterior)
                                 contenido_nota = json_para_guardar.get("nota", [])
                                 if not isinstance(contenido_nota, list) or len(contenido_nota) == 0:
                                     st.error(f"❌ La sección 'nota' en {tipo} debe tener al menos un item.")
-                                    st.stop() # Detiene la ejecución si hay error
+                                    st.stop()
                                 
-                                # Guardar en S3 usando tu servicio
                                 servicio.GuardarDatos(json_para_guardar, ruta_s3)
                                 archivos_guardados += 1
                         
@@ -129,22 +147,19 @@ def modal_generacion_pdf_unificado(report_id, servicio, datos_rutas):
                         # --- PASO B: CONSTRUIR Y ENVIAR PAYLOAD A SQS ---
                         fecha_formato = fecha_reporte.strftime("%Y-%m-%d")
                         
-                        # Payload unificado según las instrucciones del ingeniero de nube
                         mensaje_pdf_sqs = {
                             "report_id": report_id,
                             "bucket": servicio.bucket,
                             "region": servicio.Region,
-                            "report_types": ["codigo_red", "pq", "energia"],
+                            "report_types": report_types,
                             "email": email_pdf.strip(),
                             "report_date": fecha_formato,
-                            "enable_cfe_charts": enable_cfe
+                            "enable_cfe_charts": enable_cfe # Ya no fallará si cfe != "true"
                         }
                         
-                        # Obtener URL de la cola y enviar
                         queue_url_pdf = st.secrets["aws"]["sqs_pdf_queue_url"]
                         servicio.enviar_mensaje_sqs(queue_url_pdf, mensaje_pdf_sqs)
                         
-                        # Cerrar modal y marcar como enviado
                         st.session_state.mostrar_modal_pdf = False
                         st.session_state.pdf_enviado = True
                         st.session_state.email_pdf_enviado = email_pdf.strip()
@@ -153,8 +168,7 @@ def modal_generacion_pdf_unificado(report_id, servicio, datos_rutas):
                     except Exception as e:
                         st.error(f"❌ Error al procesar la solicitud: {str(e)}")
 
-
-def GenerarArchivos(report_id):
+def GenerarArchivos(report_id,cfe):
 
        Servicio=get_servicio_aws(report_id, _version=1)
        Datos=get_diccionario_rutas(_Servicio=Servicio,nombre_carpeta=report_id)
@@ -167,5 +181,6 @@ def GenerarArchivos(report_id):
        modal_generacion_pdf_unificado(
        report_id=report_id,
        servicio=Servicio,
-       datos_rutas=Datos["Comentarios"]
+       datos_rutas=Datos["Comentarios"],
+       cfe=cfe
        )
