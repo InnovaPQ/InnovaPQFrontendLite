@@ -327,14 +327,14 @@ def CargarDatos2():
                 # PASO 1: Subir Archivo Principal a "raw_data"
                 # ---------------------------------------------------------
                 file_main = archivos_formulario["main_file"]
-                if archivos_formulario["CFE"] is not None:
-                    file_cfe=archivos_formulario["CFE"]
+                file_cfe = archivos_formulario.get("CFE")
+                cfe_agregado = False
                 if file_main is not None:
                     file_main.seek(0)
                     status.write(f"⬆️ Subiendo Raw Data: {file_main.name}")
                     client.upload_fileobj(file_main, bucket, f"{prefix_raw}{file_main.name}")
                     if file_cfe is not None:
-                        cfe_agregado=True
+                        cfe_agregado = True
                         status.write(f"⬆️ Subiendo CFE: {CFE_file_Name}")
                         client.upload_fileobj(file_cfe, bucket, f"{prefix_raw}{CFE_file_Name}")
                 

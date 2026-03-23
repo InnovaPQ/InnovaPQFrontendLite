@@ -31,11 +31,11 @@ class Descripciones:
                     col1,col2=st.columns([0.3,0.7])
                     with col1:
                         st.markdown(
-                            f'<p style="font-size: 18px; font-weight: bold;color:black;">{str(row[0])} </p>',
+                            f'<p style="font-size: 18px; font-weight: bold;color:black;">{str(row.iloc[0])} </p>',
                             unsafe_allow_html=True
                             )
                     with col2:
-                        st.write(str(row[1]))
+                        st.write(str(row.iloc[1]))
         except Exception as e:
             st.error(f"Error al construir descripciones. Revisa el ID del reporte.")
                 

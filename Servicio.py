@@ -1,6 +1,7 @@
 import json
 import boto3
 import streamlit as st
+from botocore.exceptions import ClientError
 import pandas as pd
 from io import BytesIO
 from PIL import Image
@@ -133,16 +134,41 @@ class Data:
             print(f"Error descargando: {e}")
             return None
 
+    def objeto_existe_s3(self, key: str) -> bool:
+        """True si el objeto existe en el bucket (head_object)."""
+        if not key:
+            return False
+        try:
+            self.client_s3.head_object(Bucket=self.bucket, Key=key)
+            return True
+        except ClientError as e:
+            code = e.response.get("Error", {}).get("Code", "")
+            if code in ("404", "NoSuchKey", "NotFound"):
+                return False
+            if code == "403":
+                print(f"objeto_existe_s3: 403 en {key} (¿permisos?)")
+            return False
+        except Exception as e:
+            print(f"objeto_existe_s3: {e}")
+            return False
+
     def enviar_mensaje_sqs(self, queue_url, mensaje):
         """
         Envía un mensaje JSON a una cola SQS.
         mensaje: dict que se serializará a JSON string
         """
         try:
+            body_preview = json.dumps(mensaje, ensure_ascii=False)
+            print(
+                f"[SQS] send_message queue={queue_url!r} "
+                f"bytes={len(body_preview)} report_id={mensaje.get('report_id')!r}"
+            )
             response = self.client_sqs.send_message(
                 QueueUrl=queue_url,
-                MessageBody=json.dumps(mensaje)
+                MessageBody=body_preview
             )
+            mid = response.get("MessageId", "")
+            print(f"[SQS] OK MessageId={mid}")
             return response
         except Exception as e:
             print(f"Error enviando mensaje a SQS: {e}")
