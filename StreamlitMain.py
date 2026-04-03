@@ -10,7 +10,8 @@ st.set_page_config(
 
 
 # Lee el query param "report_id" de la URL
-# Ejemplo: http://localhost:8501/?report_id=report04c8765d-90e9-467e-b67d-3beba4d58a7d&pagina=reporte&cfe=true
+# Ejemplo: 
+# http://localhost:8501/?report_id=report41a51eff-12a6-48ae-ba0b-f09fce52f6bd&pagina=reporte&cfe=true
 report_id = st.query_params.get("report_id")
 pagina=st.query_params.get("pagina")
 cfe=st.query_params.get("cfe")

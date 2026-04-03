@@ -3,49 +3,43 @@ import boto3
 import streamlit as st
 from botocore.exceptions import ClientError
 import pandas as pd
-from io import BytesIO
+from io import BytesIO, StringIO  # <-- Añadido StringIO aquí
 from PIL import Image
 import openpyxl
 
 
 class Data:
-    def __init__(self,folder="NA"):
-        self.accessKeyID=st.secrets["aws"]["aws_access_key_id"]
-        self.SecretAccessKey=st.secrets["aws"]["aws_secret_access_key"]
-        self.Region=st.secrets["aws"]["region_name"]
-        self.bucket=st.secrets["aws"]["bucket_name"]
-        self.folder=folder
-        self.client_s3=boto3.client(
-                                    's3',
-                                    aws_access_key_id=self.accessKeyID,
-                                    aws_secret_access_key=self.SecretAccessKey,
-                                    region_name=self.Region
-                                )
-        self.client_sqs=boto3.client(
-                                    'sqs',
-                                    aws_access_key_id=self.accessKeyID,
-                                    aws_secret_access_key=self.SecretAccessKey,
-                                    region_name=self.Region
-                                )
+    def __init__(self, folder="NA"):
+        self.accessKeyID = st.secrets["aws"]["aws_access_key_id"]
+        self.SecretAccessKey = st.secrets["aws"]["aws_secret_access_key"]
+        self.Region = st.secrets["aws"]["region_name"]
+        self.bucket = st.secrets["aws"]["bucket_name"]
+        self.folder = folder
         
+        self.client_s3 = boto3.client(
+            's3',
+            aws_access_key_id=self.accessKeyID,
+            aws_secret_access_key=self.SecretAccessKey,
+            region_name=self.Region
+        )
+        self.client_sqs = boto3.client(
+            'sqs',
+            aws_access_key_id=self.accessKeyID,
+            aws_secret_access_key=self.SecretAccessKey,
+            region_name=self.Region
+        )
 
     def LeerDatos(self):
-        data=json.load(open('ArchivosJson/DB_OrigenCodigoRed.json', 'r', encoding='utf-8'))
+        data = json.load(open('ArchivosJson/DB_OrigenCodigoRed.json', 'r', encoding='utf-8'))
         return data
     
     def GuardarDatos(self, json_completo, ruta_s3):
         """
         Guarda el JSON completo de comentarios en S3.
-        
-        Args:
-            json_completo (dict): El JSON completo con todas las secciones
-            ruta_s3 (str): La ruta completa en S3 donde se guardará el JSON
         """
         try:
-            # Convertir el JSON a bytes
             json_bytes = json.dumps(json_completo, indent=4, ensure_ascii=False).encode('utf-8')
             
-            # Subir a S3
             self.client_s3.put_object(
                 Bucket=self.bucket,
                 Key=ruta_s3,
@@ -58,7 +52,6 @@ class Data:
 
     def obtener_rutas_actualizadas(self):
         """
-        Recibe: 'Clientes/CocaCola/2024'
         Devuelve: El JSON con las rutas absolutas validadas en S3.
         """
         s3 = self.client_s3
@@ -66,16 +59,13 @@ class Data:
 
         bucket_name = self.bucket
         
-        # 1. Cargar el mapa base (Tu JSON local)
         json_template = self.LeerDatos()
 
-        # 2. Normalizar la carpeta raíz (asegurar que termine en /)
         if not self.folder.endswith('/'): 
             self.folder += '/'
 
         print(f"📡 Escaneando S3 en: {self.folder}...")
 
-        # 3. Obtener Inventario Real (Set para búsqueda instantánea)
         archivos_validos = set()
         paginator = s3.get_paginator('list_objects_v2')
         
@@ -89,30 +79,19 @@ class Data:
             st.error(f"Error leyendo el bucket: {e}")
             return json_template
 
-        # 4. Recorrer el JSON y rellenar las rutas (Recursivo)
         def actualizar_nodo(nodo):
             for clave, valor in nodo.items():
                 if isinstance(valor, dict):
-                    # Si es carpeta lógica (ej: "Contexto"), entramos
                     actualizar_nodo(valor)
                 elif isinstance(valor, str):
-                    # --- AQUÍ OCURRE LA MAGIA ---
-                    # Limpiamos slashes iniciales para evitar dobles //
                     ruta_relativa = valor.lstrip('/')
-                    
-                    # Construimos la ruta absoluta
-                    # Ej: "CarpetaRaiz/" + "Armonicos/espectros/foto.png"
                     ruta_completa = f"{self.folder}{ruta_relativa}"
 
-                    # Verificamos si existe en la lista que bajamos de S3
                     if ruta_completa in archivos_validos:
                         nodo[clave] = ruta_completa
                     else:
-                        # Si no existe, lo marcamos explícitamente como None
-                        # print(f"❌ No encontrado: {ruta_completa}")
                         nodo[clave] = None
         
-        # Trabajamos sobre una copia para no alterar el original en memoria
         json_final = json_template.copy()
         actualizar_nodo(json_final)
         
@@ -135,9 +114,7 @@ class Data:
             return None
 
     def objeto_existe_s3(self, key: str) -> bool:
-        """True si el objeto existe en el bucket (head_object)."""
-        if not key:
-            return False
+        if not key: return False
         try:
             self.client_s3.head_object(Bucket=self.bucket, Key=key)
             return True
@@ -153,10 +130,6 @@ class Data:
             return False
 
     def enviar_mensaje_sqs(self, queue_url, mensaje):
-        """
-        Envía un mensaje JSON a una cola SQS.
-        mensaje: dict que se serializará a JSON string
-        """
         try:
             body_preview = json.dumps(mensaje, ensure_ascii=False)
             print(
@@ -173,7 +146,52 @@ class Data:
         except Exception as e:
             print(f"Error enviando mensaje a SQS: {e}")
             raise e
+        
+    # =========================================================================
+    # NUEVO MÉTODO PARA GUARDAR DATOS EDITADOS
+    # =========================================================================
+    def actualizar_archivo_s3(self, rutaDatos, df):
+        """
+        Recibe un DataFrame modificado desde Streamlit y lo sobreescribe en S3.
+        Soporta archivos Excel (.xlsx) y CSV automáticamente.
+        """
+        try:
+            # 1. Aseguramos el nombre del bucket y la llave
+            if str(rutaDatos).startswith("s3://"):
+                partes = rutaDatos.replace("s3://", "").split("/", 1)
+                bucket_name = partes[0]
+                key_name = partes[1]
+            else:
+                bucket_name = self.bucket # Usa el bucket de tus st.secrets
+                key_name = rutaDatos
 
-    
-        
-        
+            # 2. Convertir DataFrame a bytes (Excel o CSV dependiendo de la ruta)
+            if key_name.endswith(('.xlsx', '.xls')):
+                buffer = BytesIO()
+                # Usamos openpyxl para escribir el Excel en memoria
+                with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
+                    df.to_excel(writer, index=False)
+                
+                body_content = buffer.getvalue()
+                content_type = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+            else:
+                # Fallback a CSV por siaca
+                buffer = StringIO()
+                df.to_csv(buffer, index=False)
+                body_content = buffer.getvalue()
+                content_type = 'text/csv'
+
+            # 3. Subir a S3
+            self.client_s3.put_object(
+                Bucket=bucket_name,
+                Key=key_name,
+                Body=body_content,
+                ContentType=content_type
+            )
+            
+            print(f"✅ Archivo guardado exitosamente en: s3://{bucket_name}/{key_name}")
+            return True
+            
+        except Exception as e:
+            print(f"❌ Error crítico al intentar guardar en S3: {e}")
+            return False

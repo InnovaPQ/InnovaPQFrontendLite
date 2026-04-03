@@ -18,6 +18,150 @@ class Tabla:
         st.subheader(self.titulo)
         st.table(data=df)
 
+
+# =============================================================================
+# CLASE: TablaEditable
+# Extiende la clase base Tabla para permitir edición interactiva de datos
+# almacenados en S3, usando el componente data_editor de Streamlit.
+# =============================================================================
+
+class TablaEditable(Tabla):
+
+    # -------------------------------------------------------------------------
+    # INICIALIZACIÓN
+    # -------------------------------------------------------------------------
+
+    def __init__(self, titulo: str, rutaDatos: str, servicio):
+        """
+        Inicializa la tabla editable heredando de la clase base Tabla.
+
+        Genera claves únicas en session_state para aislar el estado
+        de cada instancia de tabla dentro de la misma sesión de Streamlit.
+
+        Args:
+            titulo    (str): Nombre visible de la tabla.
+            rutaDatos (str): Ruta del archivo en S3.
+            servicio       : Objeto con métodos para interactuar con S3.
+        """
+        super().__init__(titulo, rutaDatos, servicio)
+
+        # Claves únicas en session_state para esta tabla específica
+        self.key_datos        = f"datos_{self.titulo}"
+        self.key_modo_edicion = f"modo_edicion_{self.titulo}"
+
+    # -------------------------------------------------------------------------
+    # MÉTODO PRINCIPAL: construir la UI de la tabla
+    # -------------------------------------------------------------------------
+
+    def construirContenedor(self):
+        """
+        Punto de entrada principal para renderizar la tabla.
+
+        Flujo:
+            1. Carga los datos desde S3 (solo la primera vez).
+            2. Inicializa el estado de edición si no existe.
+            3. Renderiza en modo lectura o modo edición según el estado.
+        """
+
+        # -- Paso 1: Cargar datos desde S3 si aún no están en sesión ----------
+        if self.key_datos not in st.session_state:
+            df = self.servicio.descargar_archivo_s3(self.rutaDatos)
+
+            if df is None:
+                st.error("No se encontraron datos para esta Tabla.")
+                return
+
+            st.session_state[self.key_datos] = df
+
+        # -- Paso 2: Inicializar el modo de edición (False = solo lectura) ----
+        if self.key_modo_edicion not in st.session_state:
+            st.session_state[self.key_modo_edicion] = False
+
+        # -- Paso 3: Renderizar según el modo activo --------------------------
+        st.subheader(self.titulo)
+
+        if st.session_state[self.key_modo_edicion]:
+            self._renderizar_modo_edicion()
+        else:
+            self._renderizar_modo_lectura()
+
+    # -------------------------------------------------------------------------
+    # RENDERIZADO: Modo lectura (tabla estática)
+    # -------------------------------------------------------------------------
+
+    def _renderizar_modo_lectura(self):
+        """
+        Muestra los datos como tabla estática y un botón para activar la edición.
+        """
+        st.table(data=st.session_state[self.key_datos])
+
+        if st.button("Editar Tabla", key=f"btn_editar_{self.titulo}",type="primary"):
+            st.session_state[self.key_modo_edicion] = True
+            st.rerun()
+
+    # -------------------------------------------------------------------------
+    # RENDERIZADO: Modo edición (tabla interactiva)
+    # -------------------------------------------------------------------------
+
+    def _renderizar_modo_edicion(self):
+        """
+        Muestra el editor interactivo de datos con opciones para
+        guardar los cambios en S3 o cancelar la edición.
+        """
+        st.info("Modificando datos. Presiona 'Guardar' para enviar los cambios a S3.")
+
+        # Editor interactivo: permite modificar, agregar y eliminar filas
+        df_editado = st.data_editor(
+            st.session_state[self.key_datos],
+            key=f"editor_{self.titulo}",
+            num_rows="dynamic",  # Habilita agregar/borrar filas
+        )
+
+        # Creamos un contenedor horizontal
+        with st.container(horizontal=True):
+            
+            # Ambos botones se colocan uno al lado del otro naturalmente
+            if st.button("Guardar cambios", type="primary", key=f"btn_guardar_{self.titulo}"):
+                self._guardar_en_s3(df_editado)
+                
+            if st.button("Cancelar", key=f"btn_cancelar_{self.titulo}"):
+                self._cancelar_edicion()
+
+# La 'col_vacia' no se usa, simplemente empuja los botones hacia la izquierda
+
+    # -------------------------------------------------------------------------
+    # ACCIONES: Guardar y Cancelar
+    # -------------------------------------------------------------------------
+
+    def _guardar_en_s3(self, df_editado):
+        """
+        Sube el DataFrame editado a S3 y actualiza el estado de la sesión.
+
+        Si la operación falla, muestra un mensaje de error sin modificar
+        el estado local.
+
+        Args:
+            df_editado: DataFrame con los cambios realizados por el usuario.
+        """
+        exito = self.servicio.actualizar_archivo_s3(self.rutaDatos, df_editado)
+
+        if exito:
+            st.success("¡Datos actualizados en S3 correctamente!")
+
+            # Sincronizar caché local con los datos recién guardados
+            st.session_state[self.key_datos]        = df_editado
+            st.session_state[self.key_modo_edicion] = False
+            st.rerun()
+        else:
+            st.error("Hubo un error al actualizar los datos en S3.")
+
+    def _cancelar_edicion(self):
+        """
+        Descarta los cambios y regresa al modo de solo lectura.
+        """
+        st.session_state[self.key_modo_edicion] = False
+        st.rerun()
+
 class Descripciones:
     def __init__(self,rutaDatos,servicio):
         self.rutaDatos=rutaDatos

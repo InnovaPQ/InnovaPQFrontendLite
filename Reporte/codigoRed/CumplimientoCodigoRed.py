@@ -1,5 +1,5 @@
 import streamlit as st
-from Modelos import Tabla
+from Modelos import Tabla, TablaEditable
 
 
 
@@ -9,7 +9,7 @@ def Cumplimiento(Servicio,Datos):
     # --- Tabla cumplimiento ---
     with st.container():
         rutaTablaCumplimiento=Datos["CumplimientoRed"]["Principal"]
-        TablaCumplimiento=Tabla("Tabla de cumplimiento",rutaDatos=rutaTablaCumplimiento,servicio=Servicio)
+        TablaCumplimiento=TablaEditable("Tabla de cumplimiento",rutaDatos=rutaTablaCumplimiento,servicio=Servicio)
         TablaCumplimiento.construirContenedor()
 
     with st.expander(label="Cumplimiento de armónicos de corriente"):
