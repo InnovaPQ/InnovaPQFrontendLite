@@ -4,7 +4,16 @@ import pandas as pd
 import io
 import json
 import re
+from enum import Enum
 from Servicio import Data
+
+
+class CorrienteUnidad(str, Enum):
+    """Unidades de Icc / I_L para SQS (backend: icc_unit / il_unit → 'A' o 'kA')."""
+
+    A = "A"
+    KA = "kA"
+
 
 # Mapeo de perfiles: nombre bonito -> key técnica
 PERFILES_MEDIDOR = {
@@ -37,11 +46,11 @@ def build_sqs_message(
     demand_kw:float,
     supply_voltage:float,
     supply_voltage_unit:str,
-    icc:float,
-    il:float,
-    skip_llm: bool = True
-
-    
+    icc: float,
+    il: float,
+    icc_unit: str,
+    il_unit: str,
+    skip_llm: bool = True,
 ) -> dict:
     """
     Construye el mensaje SQS para el procesamiento de reportes.
@@ -81,9 +90,10 @@ def build_sqs_message(
         "demand_kw":demand_kw,
         "supply_voltage":supply_voltage,
         "supply_voltage_unit":supply_voltage_unit,
-        "icc":icc,
-        "il":il
-
+        "icc": icc,
+        "il": il,
+        "icc_unit": icc_unit,
+        "il_unit": il_unit,
     }
 
 def CargarDatos2():
@@ -158,10 +168,19 @@ def CargarDatos2():
 
                 # Corriente Demanda
                 cc1, cc2 = st.columns([0.7, 0.3])
-                i_dem = cc1.number_input("Corriente demanda máx (Valor)",value=None)
-                u_idem = cc2.selectbox("U.", ["A", "kA"], key="uidem")
-                datos_formulario["Corriente demanda máxima contratada"] = f"{i_dem} {u_idem}" if i_dem else ""
-                datos_formulario["Corriente demanda máxima contratada valor"]=i_dem
+                i_dem = cc1.number_input("Corriente demanda máx (Valor)", value=None)
+                u_idem = cc2.selectbox(
+                    "U.",
+                    list(CorrienteUnidad),
+                    format_func=lambda u: u.value,
+                    index=list(CorrienteUnidad).index(CorrienteUnidad.A),
+                    key="uidem",
+                )
+                datos_formulario["Corriente demanda máxima contratada"] = (
+                    f"{i_dem} {u_idem.value}" if i_dem else ""
+                )
+                datos_formulario["Corriente demanda máxima contratada valor"] = i_dem
+                datos_formulario["Corriente demanda máxima contratada unidad"] = u_idem
             with col_b:
                 datos_formulario["Transformador del tablero"] = st.text_input("Transformador (Capacidad/Tipo)")
                 
@@ -173,10 +192,19 @@ def CargarDatos2():
 
                 # Corriente CC
                 cc1, cc2 = st.columns([0.7, 0.3])
-                icc = cc1.number_input("Corriente CC (Valor)",value=None)
-                u_icc = cc2.selectbox("U.", ["kA", "A"], key="uicc")
-                datos_formulario["Corriente de corto circuito"] = f"{icc} {u_icc}" if icc else ""
-                datos_formulario["Corriente de corto circuito valor"]=icc
+                icc = cc1.number_input("Corriente CC (Valor)", value=None)
+                u_icc = cc2.selectbox(
+                    "U.",
+                    list(CorrienteUnidad),
+                    format_func=lambda u: u.value,
+                    index=list(CorrienteUnidad).index(CorrienteUnidad.KA),
+                    key="uicc",
+                )
+                datos_formulario["Corriente de corto circuito"] = (
+                    f"{icc} {u_icc.value}" if icc else ""
+                )
+                datos_formulario["Corriente de corto circuito valor"] = icc
+                datos_formulario["Corriente de corto circuito unidad"] = u_icc
 
             st.divider()
             cd1, cd2 = st.columns(2)
@@ -479,6 +507,8 @@ def CargarDatos2():
                     icc=0.0
                 
                 # Construir mensaje usando la función helper (Single Responsibility)
+                icc_u = datos_formulario["Corriente de corto circuito unidad"]
+                il_u = datos_formulario["Corriente demanda máxima contratada unidad"]
                 mensaje_sqs = build_sqs_message(
                     report_id=f"report{report_uuid}",
                     bucket=bucket,
@@ -487,17 +517,18 @@ def CargarDatos2():
                     email=email_final,  # Usar el email confirmado del modal
                     report_base_url=report_base_url,
                     nominal_voltage=tension_valor,
-                    nominal_voltage_unit=tension_unidad, # type: ignore
+                    nominal_voltage_unit=tension_unidad,  # type: ignore
                     profile=datos_formulario["_perfil_tecnico"],
                     skip_llm=skip_llm_value,
                     enable_cfe_charts=cfe_agregado,
                     cfe_file=CFE_file_Name,
                     demand_kw=demand_kw,
-                    supply_voltage= supply_voltage,
-                    supply_voltage_unit= supply_voltage_unit,
-                    icc= icc,
-                    il= il
-
+                    supply_voltage=supply_voltage,
+                    supply_voltage_unit=supply_voltage_unit,
+                    icc=icc,
+                    il=il,
+                    icc_unit=icc_u.value,
+                    il_unit=il_u.value,
                 )
                 
                 # Obtener URL de la cola desde secrets
