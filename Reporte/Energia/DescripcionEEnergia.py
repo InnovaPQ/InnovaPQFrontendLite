@@ -23,6 +23,11 @@ def Descripcion(Servicio,Datos):
         DescripcionDatos=Descripciones(rutaDatos=rutaDatosMedicion,servicio=Servicio)
         DescripcionDatos.ConstruirContenedor()
 
+    with st.expander(label="Datos del punto de medición"):
+        rutaPuntoMedicion=Datos["Contexto"]["PuntoMedicion"]
+        DescripcionPuntoMedicion=Descripciones(rutaDatos=rutaPuntoMedicion,servicio=Servicio)
+        DescripcionPuntoMedicion.ConstruirContenedor()
+
     with st.expander(label="Información del centro de carga"):
         rutaInfoCarga=Datos["Contexto"]["Informacion"]
         DescripcionInfoCarga=Descripciones(rutaDatos=rutaInfoCarga,servicio=Servicio)

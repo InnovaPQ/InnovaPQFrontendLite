@@ -3,7 +3,8 @@
         "Descripcion":"input/Tabla 2 - Descripción Centro Carga.xlsx",
         "Informacion":"input/Tabla 1 - Información Centro Carga.xlsx",
         "Medidor":"input/Tabla 3 - Información Medidor.xlsx",
-        "Medicion":"input/Tabla 4 - Datos Medición.xlsx"
+        "Medicion":"input/Tabla 4 - Datos Medición.xlsx",
+        "PuntoMedicion":"input/Tabla 5 - Datos Punto Medición.xlsx"
     },
     "CumplimientoRed":{
         "Principal":"Cumplimiento Código de Red/tablas/resumen_cumplimiento_codigo_red.xlsx",

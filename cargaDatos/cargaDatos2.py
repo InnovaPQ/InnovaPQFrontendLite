@@ -401,7 +401,8 @@ def CargarDatos2():
                 subir_excel("Tabla 1 - Información Centro Carga.xlsx", {
                     "Empresa": datos_formulario["Empresa"],
                     "Dirección": datos_formulario["Dirección"],
-                    "Responsable de equipo": datos_formulario["Responsable de equipo"]
+                    "Responsable de equipo": datos_formulario["Responsable de equipo"],
+                    "Email":datos_formulario['Correo Electrónico']
                 })
 
                 # Generar Tabla 2
@@ -418,14 +419,18 @@ def CargarDatos2():
                     "Tasa de muestreo": datos_formulario["Tasa muestreo"]
                 })
 
-                # Generar Tabla 4
+                # Generar Tabla 4 (parámetros eléctricos del suministro)
                 subir_excel("Tabla 4 - Datos Medición.xlsx", {
-                    "Frecuencia del sistema": datos_formulario["Frecuencia del sistema"],
-                    "Tensión de suministro": datos_formulario["Tensión de suministro"],
-                    "Tensión de punto de medición": datos_formulario["Tensión de punto de medición"],
+                    "Frecuencia": datos_formulario["Frecuencia del sistema"],
+                    "Tensión": datos_formulario["Tensión de suministro"],
                     "Demanda contratada": datos_formulario["Demanda contratada"],
-                    "Corriente demanda máxima contratada": datos_formulario["Corriente demanda máxima contratada"],
-                    "Corriente de corto circuito": datos_formulario["Corriente de corto circuito"],
+                    "Corriente demanda máxima": datos_formulario["Corriente demanda máxima contratada"],
+                    "Corriente de corto circuito máximo": datos_formulario["Corriente de corto circuito"]
+                })
+
+                # Generar Tabla 5 (datos del punto de medición)
+                subir_excel("Tabla 5 - Datos Punto Medición.xlsx", {
+                    "Tensión": datos_formulario["Tensión de punto de medición"],
                     "Transformador del tablero": datos_formulario["Transformador del tablero"],
                     "Temporalidad de medición": datos_formulario["Temporalidad de medición"],
                     "Fecha de medición inicial": datos_formulario["Fecha de medición inicial"],
