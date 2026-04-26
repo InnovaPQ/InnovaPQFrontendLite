@@ -43,7 +43,8 @@ def build_sqs_message(
     profile: str,
     cfe_file: str,
     enable_cfe_charts: bool,
-    demand_kw:float,
+    demand: float,
+    demand_unit: str,
     supply_voltage:float,
     supply_voltage_unit:str,
     icc: float,
@@ -65,6 +66,8 @@ def build_sqs_message(
         nominal_voltage: Tensión nominal del sistema
         nominal_voltage_unit: Unidad de la tensión nominal (kV o V)
         profile: Perfil técnico del medidor
+        demand: Demanda contratada en la unidad seleccionada
+        demand_unit: Unidad de demanda contratada (W, kW o MW)
         skip_llm: Si es True, omite la generación de reportes LLM (default: True - skip LLM by default)
     
     Returns:
@@ -87,7 +90,8 @@ def build_sqs_message(
         "skip_llm": skip_llm,
         "enable_cfe_charts": enable_cfe_charts,
         "cfe_file": cfe_file,
-        "demand_kw":demand_kw,
+        "demand": demand,
+        "demand_unit": demand_unit,
         "supply_voltage":supply_voltage,
         "supply_voltage_unit":supply_voltage_unit,
         "icc": icc,
@@ -128,7 +132,6 @@ def CargarDatos2():
                 datos_formulario["Dirección"] = st.text_input("Dirección del sitio")
             
             st.divider()
-            datos_formulario["Descripción de actividades"] = st.text_area("Descripción de actividades", height=80)
             datos_formulario["Nombre del punto"] = st.text_input("Nombre del punto de medición")
             datos_formulario["Descripción carga"] = st.text_input("Descripción general de la carga")
 
@@ -165,6 +168,7 @@ def CargarDatos2():
                 u_dem = cc2.selectbox("U.", ["kW", "MW", "W"], key="udem")
                 datos_formulario["Demanda contratada"] = f"{dem} {u_dem}" if dem else ""
                 datos_formulario["Demanda Valor"]=dem
+                datos_formulario["Demanda Unidad"]=u_dem
 
                 # Corriente Demanda
                 cc1, cc2 = st.columns([0.7, 0.3])
@@ -407,7 +411,6 @@ def CargarDatos2():
 
                 # Generar Tabla 2
                 subir_excel("Tabla 2 - Descripción Centro Carga.xlsx", {
-                    "Descripción de actividades": datos_formulario["Descripción de actividades"],
                     "Nombre del punto de medición": datos_formulario["Nombre del punto"],
                     "Descripción general de la carga": datos_formulario["Descripción carga"]
                 })
@@ -490,9 +493,10 @@ def CargarDatos2():
                 #Inicializar variables dinamicas de sqs
 
                 if datos_formulario["Demanda Valor"] is not None:
-                    demand_kw= datos_formulario["Demanda Valor"]
+                    demand = datos_formulario["Demanda Valor"]
                 else:
-                    demand_kw=0.0
+                    demand = 0.0
+                demand_unit = datos_formulario["Demanda Unidad"]
 
                 if datos_formulario["Tension suministro valor"] is not None:
                     supply_voltage= datos_formulario["Tension suministro valor"]
@@ -527,7 +531,8 @@ def CargarDatos2():
                     skip_llm=skip_llm_value,
                     enable_cfe_charts=cfe_agregado,
                     cfe_file=CFE_file_Name,
-                    demand_kw=demand_kw,
+                    demand=demand,
+                    demand_unit=demand_unit,
                     supply_voltage=supply_voltage,
                     supply_voltage_unit=supply_voltage_unit,
                     icc=icc,
