@@ -1,0 +1,37 @@
+# ── Control de versiones ────────────────────────────────────────────────────────
+.git
+.gitignore
+.github
+
+# ── Entornos virtuales ──────────────────────────────────────────────────────────
+.venv
+venv
+env
+
+# ── Caché de Python ─────────────────────────────────────────────────────────────
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+*.pycache
+
+# ── Credenciales y secretos (NUNCA incluir en la imagen) ───────────────────────
+.streamlit/secrets.toml
+.env
+*.env
+
+# ── Datos locales de desarrollo ─────────────────────────────────────────────────
+input/
+out/
+
+# ── Configuración de desarrollo ─────────────────────────────────────────────────
+.devcontainer
+.vscode
+
+# ── Documentación (no necesaria en producción) ──────────────────────────────────
+README.md
+CLAUDE.md
+
+# ── Docker ──────────────────────────────────────────────────────────────────────
+Dockerfile
+.dockerignore
