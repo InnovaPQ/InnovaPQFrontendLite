@@ -10,24 +10,26 @@ import openpyxl
 
 class Data:
     def __init__(self, folder="NA"):
-        self.accessKeyID = st.secrets["aws"]["aws_access_key_id"]
-        self.SecretAccessKey = st.secrets["aws"]["aws_secret_access_key"]
+        # Configuración no sensible — siempre requerida en secrets.toml
         self.Region = st.secrets["aws"]["region_name"]
         self.bucket = st.secrets["aws"]["bucket_name"]
         self.folder = folder
-        
-        self.client_s3 = boto3.client(
-            's3',
-            aws_access_key_id=self.accessKeyID,
-            aws_secret_access_key=self.SecretAccessKey,
-            region_name=self.Region
-        )
-        self.client_sqs = boto3.client(
-            'sqs',
-            aws_access_key_id=self.accessKeyID,
-            aws_secret_access_key=self.SecretAccessKey,
-            region_name=self.Region
-        )
+
+        # Credenciales opcionales:
+        #   - Local: se leen de secrets.toml si están presentes
+        #   - EC2 con IAM Role: no se definen aquí; boto3 las obtiene
+        #     automáticamente del Instance Metadata Service (IMDS)
+        aws_key    = st.secrets["aws"].get("aws_access_key_id")
+        aws_secret = st.secrets["aws"].get("aws_secret_access_key")
+        creds = {}
+        if aws_key and aws_secret:
+            creds = {
+                "aws_access_key_id":     aws_key,
+                "aws_secret_access_key": aws_secret,
+            }
+
+        self.client_s3 = boto3.client('s3',  region_name=self.Region, **creds)
+        self.client_sqs = boto3.client('sqs', region_name=self.Region, **creds)
 
     def LeerDatos(self):
         data = json.load(open('ArchivosJson/DB_OrigenCodigoRed.json', 'r', encoding='utf-8'))
