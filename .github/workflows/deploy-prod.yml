@@ -1,0 +1,41 @@
+name: Deploy to PROD
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    name: Deploy to EC2 PROD
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Conectar a EC2 y desplegar
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.PROD_EC2_HOST }}
+          username: ${{ secrets.PROD_EC2_USER }}
+          key: ${{ secrets.PROD_EC2_SSH_KEY }}
+          script: |
+            cd ~/InnovaPQFrontendLite
+
+            echo ">>> Bajando cambios de main..."
+            git pull origin main
+
+            echo ">>> Deteniendo y eliminando contenedor e imagen anteriores..."
+            docker stop innovapq || true
+            docker rm innovapq || true
+            docker rmi innovapq || true
+
+            echo ">>> Reconstruyendo imagen Docker..."
+            docker build -t innovapq .
+
+            echo ">>> Corriendo nuevo contenedor..."
+            docker run -d --name innovapq \
+              -p 8501:8501 \
+              -v ~/streamlit-secrets/.streamlit:/app/.streamlit \
+              --restart unless-stopped \
+              innovapq
+
+            echo ">>> Despliegue completado!"
