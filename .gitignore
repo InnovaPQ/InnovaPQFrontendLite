@@ -22,6 +22,7 @@ include/
 # === Archivos del IDE/Editor ===
 # Ignora la configuración local de VSCode
 .vscode/
+CLAUDE.md
 
 # === Archivos del Sistema Operativo ===
 # Ignora archivos de sistema de macOS
