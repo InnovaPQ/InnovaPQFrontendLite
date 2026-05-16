@@ -1,5 +1,5 @@
 import streamlit as st
-from Modelos import Tabla
+from Modelos import Tabla, TablaEditable
 
 
 def ResumenPQ(Servicio,Datos):
@@ -10,7 +10,7 @@ def ResumenPQ(Servicio,Datos):
 
         with st.container():
             rutaTablaResumenRapido=Datos["CumplimientoRed"]["ResumenRapido"]
-            TablaResumenRapido=Tabla("Resumen rápido IEEE",rutaDatos=rutaTablaResumenRapido,servicio=Servicio)
+            TablaResumenRapido=TablaEditable("Resumen rápido IEEE",rutaDatos=rutaTablaResumenRapido,servicio=Servicio)
             TablaResumenRapido.construirContenedor()
         
         with st.expander(label="Potencia activa"):
