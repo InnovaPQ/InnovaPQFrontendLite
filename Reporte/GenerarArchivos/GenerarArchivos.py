@@ -5,7 +5,7 @@ from Servicio import Data
 
 logger = logging.getLogger("innovapq.generar_archivos_pdf")
 
-# Credenciales: st.secrets ← `.streamlit/secrets.toml` (o STREAMLIT_SECRETS_FILE).
+# Credenciales: st.secrets ← `.streamlit/secrets.toml`.
 
 
 @st.cache_resource
