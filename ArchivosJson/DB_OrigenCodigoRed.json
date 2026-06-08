@@ -128,6 +128,10 @@
         "FactorPotencia":"CFE/series_tiempo/cfe_factor_potencia.png",
         "TarifaAllIn":"CFE/series_tiempo/cfe_tarifa_all_in.png"
 
+    },
+    "ITIC":{
+        "CurvaITIC":"Disturbios/disturbios/curva_itic.png"
+
     }
 
-}   
+}

@@ -43,6 +43,8 @@ def build_sqs_message(
     profile: str,
     cfe_file: str,
     enable_cfe_charts: bool,
+    itic_file: str,
+    enable_itic_chart: bool,
     demand: float,
     demand_unit: str,
     supply_voltage:float,
@@ -92,6 +94,8 @@ def build_sqs_message(
         "skip_llm": skip_llm,
         "enable_cfe_charts": enable_cfe_charts,
         "cfe_file": cfe_file,
+        "enable_itic_chart": enable_itic_chart,
+        "itic_file": itic_file,
         "demand": demand,
         "demand_unit": demand_unit,
         "supply_voltage":supply_voltage,
@@ -108,6 +112,7 @@ def build_sqs_message(
     return mensaje
 
 CFE_FILE_NAME = "raw_cfe_data.csv"
+ITIC_FILE_NAME = "raw_itic_data.xlsx"
 
 _CARGA_SESSION_DEFAULTS = {
     "carga_fase": None,
@@ -119,6 +124,7 @@ _CARGA_SESSION_DEFAULTS = {
     "input_key_path": None,
     "input_keys_paths": None,
     "cfe_agregado": False,
+    "itic_agregado": False,
     "column_check_result": None,
     "carga_snapshot": None,
     "email_final": None,
@@ -301,6 +307,15 @@ def _run_upload_raw_only(Servicio: Data):
             else:
                 st.session_state.cfe_agregado = False
 
+            file_itic = archivos.get("ITIC")
+            if file_itic is not None:
+                file_itic.seek(0)
+                status.write(f"Subiendo ITIC: {ITIC_FILE_NAME}")
+                client.upload_fileobj(file_itic, bucket, f"{prefix_raw}{ITIC_FILE_NAME}")
+                st.session_state.itic_agregado = True
+            else:
+                st.session_state.itic_agregado = False
+
             st.session_state.column_check_payload = _build_column_check_payload(
                 datos, input_names, st.session_state.report_id, bucket, Servicio.Region
             )
@@ -360,6 +375,7 @@ def _run_upload_rest_and_sqs(Servicio: Data):
         [st.session_state.input_key_path] if st.session_state.input_key_path else []
     )
     cfe_agregado = st.session_state.cfe_agregado
+    itic_agregado = st.session_state.itic_agregado
     client = Servicio.client_s3
     bucket = Servicio.bucket
 
@@ -438,7 +454,7 @@ def _run_upload_rest_and_sqs(Servicio: Data):
             tension_valor, tension_unidad = _extraer_tension_nominal(
                 datos["Tensión de punto de medición"]
             )
-            if tension_valor is None:
+            if tension_valor is None or tension_unidad is None:
                 raise ValueError(
                     "No se pudo extraer la tensión nominal del punto de medición."
                 )
@@ -483,6 +499,8 @@ def _run_upload_rest_and_sqs(Servicio: Data):
                 skip_llm=skip_llm_value,
                 enable_cfe_charts=cfe_agregado,
                 cfe_file=CFE_FILE_NAME,
+                enable_itic_chart=itic_agregado,
+                itic_file=ITIC_FILE_NAME,
                 demand=demand,
                 demand_unit=datos["Demanda Unidad"],
                 supply_voltage=supply_voltage,
@@ -536,6 +554,11 @@ def _render_email_confirmacion():
         st.warning("Este cliente se procesará con archivo de la CFE.")
     else:
         st.warning("Este cliente se procesará sin archivo de la CFE.")
+
+    if arch_modal.get("ITIC") is not None:
+        st.warning("Este cliente se procesará con archivo de Curva ITIC.")
+    else:
+        st.warning("Este cliente se procesará sin archivo de Curva ITIC.")
 
     col_btn1, col_btn2 = st.columns(2)
     with col_btn1:
@@ -703,6 +726,9 @@ def CargarDatos2():
             with st.expander("📁 Habilitar archivo Comisión Federal de Electricidad (Opcional)"):
                 archivos_formulario["CFE"] = st.file_uploader("Archivo Comisión Federal de Electricidad (CSV) (Opcional)", type=["csv", "xlsx"])
 
+            with st.expander("📁 Habilitar archivo Curva ITIC (Opcional)"):
+                archivos_formulario["ITIC"] = st.file_uploader("Archivo de eventos ITIC/CBEMA (XLSX) (Opcional)", type=["xlsx"])
+
             st.divider()
             st.subheader("Carpeta: input")
             col_files_1, col_files_2 = st.columns(2)
@@ -732,7 +758,7 @@ def CargarDatos2():
             if not valor or str(valor).strip() == "": errores.append(campo)
         
         for nombre_archivo, objeto_archivo in archivos_formulario.items():
-            if nombre_archivo == "CFE":
+            if nombre_archivo in ("CFE", "ITIC"):
                 continue
             if nombre_archivo == "main_files":
                 if not objeto_archivo:

@@ -6,7 +6,7 @@ from Reporte.GenerarArchivos.GenerarArchivos import GenerarArchivos
 # IMPORTANTE: Asegúrate de importar la función que creamos en el paso anterior
 # from tu_archivo_utilidades import modal_generacion_pdf_unificado
 
-def Reporte(report_id, cfe): 
+def Reporte(report_id, cfe, itic):
     # Nota: Agregué 'servicio' y 'datos' a los argumentos de la función para poder 
     # pasarlos al modal de generación de PDFs.
     
@@ -50,7 +50,7 @@ def Reporte(report_id, cfe):
             return CodigoRed(report_id=report_id)
             
         case "energia":
-            return Energia(report_id=report_id, cfe=cfe)
+            return Energia(report_id=report_id, cfe=cfe, itic=itic)
             
         case "pq":
             return PQ(report_id=report_id)
