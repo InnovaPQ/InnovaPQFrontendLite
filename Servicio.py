@@ -3,11 +3,8 @@ import os
 
 import boto3
 import streamlit as st
-from botocore.auth import SigV4Auth
-from botocore.awsrequest import AWSRequest
 from botocore.config import Config
 from botocore.exceptions import ClientError
-from botocore.httpsession import URLLib3Session
 import pandas as pd
 from io import BytesIO, StringIO  # <-- Añadido StringIO aquí
 from PIL import Image
@@ -60,16 +57,6 @@ class Data:
             "lambda", region_name=self.Region, config=lambda_config, **creds
         )
 
-    def _frozen_credentials(self):
-        session = boto3.Session(region_name=self.Region, **self._boto_creds)
-        creds = session.get_credentials()
-        if creds is None:
-            raise RuntimeError(
-                "No hay credenciales AWS (secrets o IAM role). "
-                "Configure aws_access_key_id/aws_secret_access_key o un rol en EC2."
-            )
-        return creds.get_frozen_credentials()
-
     @staticmethod
     def _parse_column_check_response(raw: str) -> dict:
         parsed = json.loads(raw)
@@ -112,61 +99,35 @@ class Data:
                 f"Respuesta Lambda no es JSON válido: {raw[:300]}"
             ) from e
 
-    def _check_columns_function_url(self, function_url: str, payload: dict) -> dict:
-        """POST firmado (SigV4) a Function URL — requiere lambda:InvokeFunctionUrl en IAM."""
-        body_bytes = json.dumps(payload, ensure_ascii=False).encode("utf-8")
-        headers = {"Content-Type": "application/json"}
-        request = AWSRequest(
-            method="POST",
-            url=function_url,
-            data=body_bytes,
-            headers=headers,
-        )
-        SigV4Auth(self._frozen_credentials(), "lambda", self.Region).add_auth(request)
-        prepared = request.prepare()
-
-        http = URLLib3Session()
-        try:
-            response = http.send(prepared)
-        except Exception as e:
-            raise RuntimeError(f"Column check HTTP request failed: {e}") from e
-
-        raw = (response.text or response.content.decode("utf-8", errors="replace"))
-        if response.status_code >= 400:
-            raise RuntimeError(
-                f"Column check HTTP {response.status_code}: {raw[:500]}"
-            )
-
-        return self._parse_column_check_response(raw)
-
     def check_columns(self, payload: dict) -> dict:
         """
-        Chequeo preventivo de columnas.
+        Chequeo preventivo de columnas vía lambda:InvokeFunction.
 
-        Preferencia: aws.column_check_function_name + lambda:InvokeFunction
-        (evita 403 si el usuario IAM no tiene lambda:InvokeFunctionUrl).
-        Alternativa: column_check_function_url con SigV4.
+        Requiere aws.column_check_function_name (output CreateAssetsFunctionName
+        del stack) o env COLUMN_CHECK_FUNCTION_NAME.
+
+        Alternativas futuras (no implementadas aquí):
+        - Lambda Function URL + SigV4: útil si el cliente no puede usar boto3
+          (p. ej. SPA en el navegador con Cognito Identity Pool y
+          lambda:InvokeFunctionUrl en el rol).
+        - Proxy en backend propio: el front llama a tu API con sesión normal y
+          el servidor firma la invocación Lambda (evita exponer credenciales AWS).
+        - API Gateway HTTP: descartado para este flujo (~29 s de timeout de
+          integración; Excels grandes pueden tardar más).
         """
         function_name = (
             os.environ.get("COLUMN_CHECK_FUNCTION_NAME", "").strip()
             or _resolve_aws_secret("column_check_function_name")
         )
-        if function_name:
-            return self._check_columns_invoke(function_name, payload)
-
-        function_url = (
-            os.environ.get("COLUMN_CHECK_FUNCTION_URL", "").strip()
-            or _resolve_aws_secret("column_check_function_url")
-        )
-        if not function_url:
+        if not function_name:
             raise RuntimeError(
-                "Configure aws.column_check_function_name (recomendado) o "
-                "aws.column_check_function_url en secrets. "
-                "Nombre: output CreateAssetsFunctionName del stack o "
-                "`aws lambda list-functions --query \"Functions[?contains(FunctionName,"
-                " 'CreateAssets')].FunctionName\"`."
+                "Configure aws.column_check_function_name en secrets "
+                "(o COLUMN_CHECK_FUNCTION_NAME). "
+                "Valor: output CreateAssetsFunctionName del stack o "
+                "`aws lambda list-functions --query "
+                "\"Functions[?contains(FunctionName,'CreateAssets')].FunctionName\"`."
             )
-        return self._check_columns_function_url(function_url, payload)
+        return self._check_columns_invoke(function_name, payload)
 
     def LeerDatos(self):
         data = json.load(open('ArchivosJson/DB_OrigenCodigoRed.json', 'r', encoding='utf-8'))
