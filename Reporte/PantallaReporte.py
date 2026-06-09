@@ -56,7 +56,7 @@ def Reporte(report_id, cfe, itic):
             return PQ(report_id=report_id)
             
         case "archivos":
-            return GenerarArchivos(report_id=report_id,cfe=cfe)
+            return GenerarArchivos(report_id=report_id, cfe=cfe, itic=itic)
  
         case _:
             # Vista por defecto (cuando MostrarPanel es None o no coincide)
