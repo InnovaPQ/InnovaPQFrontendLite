@@ -1,11 +1,25 @@
 import json
+import os
+
 import boto3
 import streamlit as st
+from botocore.config import Config
 from botocore.exceptions import ClientError
 import pandas as pd
 from io import BytesIO, StringIO  # <-- Añadido StringIO aquí
 from PIL import Image
 import openpyxl
+
+
+def _resolve_aws_secret(key: str) -> str:
+    """Resuelve una clave AWS desde st.secrets."""
+    try:
+        val = st.secrets["aws"].get(key)
+        if val is not None and str(val).strip():
+            return str(val).strip()
+    except Exception:
+        pass
+    return ""
 
 
 class Data:
@@ -19,17 +33,101 @@ class Data:
         #   - Local: se leen de secrets.toml si están presentes
         #   - EC2 con IAM Role: no se definen aquí; boto3 las obtiene
         #     automáticamente del Instance Metadata Service (IMDS)
-        aws_key    = st.secrets["aws"].get("aws_access_key_id")
+        aws_key = st.secrets["aws"].get("aws_access_key_id")
         aws_secret = st.secrets["aws"].get("aws_secret_access_key")
+        aws_token = st.secrets["aws"].get("aws_session_token")
         creds = {}
         if aws_key and aws_secret:
             creds = {
-                "aws_access_key_id":     aws_key,
+                "aws_access_key_id": aws_key,
                 "aws_secret_access_key": aws_secret,
             }
+            if aws_token:
+                creds["aws_session_token"] = aws_token
 
-        self.client_s3 = boto3.client('s3',  region_name=self.Region, **creds)
-        self.client_sqs = boto3.client('sqs', region_name=self.Region, **creds)
+        self._boto_creds = creds
+        lambda_config = Config(
+            connect_timeout=15,
+            read_timeout=600,
+            retries={"max_attempts": 2},
+        )
+        self.client_s3 = boto3.client("s3", region_name=self.Region, **creds)
+        self.client_sqs = boto3.client("sqs", region_name=self.Region, **creds)
+        self.client_lambda = boto3.client(
+            "lambda", region_name=self.Region, config=lambda_config, **creds
+        )
+
+    @staticmethod
+    def _parse_column_check_response(raw: str) -> dict:
+        parsed = json.loads(raw)
+        if isinstance(parsed, dict) and "statusCode" in parsed:
+            inner = parsed.get("body")
+            if isinstance(inner, str):
+                parsed = json.loads(inner)
+            elif isinstance(inner, dict):
+                parsed = inner
+        return parsed
+
+    def _check_columns_invoke(self, function_name: str, payload: dict) -> dict:
+        """Invocación directa (lambda:InvokeFunction). Evita 403 de Function URL IAM."""
+        body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+        print(
+            f"[column_check] invoke {function_name!r} report_id={payload.get('report_id')!r} "
+            f"input={payload.get('input_key') or payload.get('input_keys')!r}"
+        )
+        try:
+            response = self.client_lambda.invoke(
+                FunctionName=function_name,
+                InvocationType="RequestResponse",
+                Payload=body,
+            )
+        except ClientError as e:
+            raise RuntimeError(
+                f"Column check invoke falló ({function_name}): {e}"
+            ) from e
+
+        raw = response["Payload"].read().decode("utf-8", errors="replace")
+        print(f"[column_check] invoke done status={response.get('StatusCode')} bytes={len(raw)}")
+
+        if response.get("FunctionError"):
+            raise RuntimeError(f"Column check Lambda error: {raw[:800]}")
+
+        try:
+            return self._parse_column_check_response(raw)
+        except json.JSONDecodeError as e:
+            raise RuntimeError(
+                f"Respuesta Lambda no es JSON válido: {raw[:300]}"
+            ) from e
+
+    def check_columns(self, payload: dict) -> dict:
+        """
+        Chequeo preventivo de columnas vía lambda:InvokeFunction.
+
+        Requiere aws.column_check_function_name (output CreateAssetsFunctionName
+        del stack) o env COLUMN_CHECK_FUNCTION_NAME.
+
+        Alternativas futuras (no implementadas aquí):
+        - Lambda Function URL + SigV4: útil si el cliente no puede usar boto3
+          (p. ej. SPA en el navegador con Cognito Identity Pool y
+          lambda:InvokeFunctionUrl en el rol).
+        - Proxy en backend propio: el front llama a tu API con sesión normal y
+          el servidor firma la invocación Lambda (evita exponer credenciales AWS).
+        - API Gateway HTTP: descartado para este flujo (~29 s de timeout de
+          integración; Excels grandes pueden tardar más).
+        """
+        function_name = (
+            os.environ.get("COLUMN_CHECK_FUNCTION_NAME", "").strip()
+            or _resolve_aws_secret("column_check_function_name")
+        )
+        if not function_name:
+            raise RuntimeError(
+                "Configure aws.column_check_function_name en secrets "
+                "(o COLUMN_CHECK_FUNCTION_NAME). "
+                "Valor: output CreateAssetsFunctionName del stack o "
+                "`aws lambda list-functions --query "
+                "\"Functions[?contains(FunctionName,'CreateAssets')].FunctionName\"`."
+            )
+        return self._check_columns_invoke(function_name, payload)
 
     def LeerDatos(self):
         data = json.load(open('ArchivosJson/DB_OrigenCodigoRed.json', 'r', encoding='utf-8'))

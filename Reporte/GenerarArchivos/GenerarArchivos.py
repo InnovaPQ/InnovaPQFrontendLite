@@ -5,7 +5,7 @@ from Servicio import Data
 
 logger = logging.getLogger("innovapq.generar_archivos_pdf")
 
-# Credenciales: st.secrets ← `.streamlit/secrets.toml` (o STREAMLIT_SECRETS_FILE).
+# Credenciales: st.secrets ← `.streamlit/secrets.toml`.
 
 
 @st.cache_resource
@@ -20,7 +20,7 @@ def get_diccionario_rutas(_Servicio, nombre_carpeta):
     return _Servicio.obtener_rutas_actualizadas()
 
 
-def modal_generacion_pdf_unificado(report_id, servicio, datos_rutas, cfe):
+def modal_generacion_pdf_unificado(report_id, servicio, datos_rutas, cfe, itic):
     if "mostrar_modal_pdf" not in st.session_state:
         st.session_state.mostrar_modal_pdf = False
     if "pdf_enviado" not in st.session_state:
@@ -90,6 +90,16 @@ def modal_generacion_pdf_unificado(report_id, servicio, datos_rutas, cfe):
                 )
             else:
                 st.write("Reporte del CFE no disponible para este cliente.")
+
+            enable_itic = False
+            if itic == "true":
+                st.write("Seleccione para habilitar la Curva ITIC:")
+                enable_itic = st.checkbox(
+                    "Habilitar Curva ITIC",
+                    value=True,
+                )
+            else:
+                st.write("Curva ITIC no disponible para este cliente.")
 
             col_btn1, col_btn2 = st.columns(2)
             with col_btn1:
@@ -161,6 +171,7 @@ def modal_generacion_pdf_unificado(report_id, servicio, datos_rutas, cfe):
                                 "email": email_pdf.strip(),
                                 "report_date": fecha_formato,
                                 "enable_cfe_charts": enable_cfe,
+                                "enable_itic_chart": enable_itic,
                             }
 
                             queue_url_pdf = st.secrets["aws"]["sqs_pdf_queue_url"]
@@ -193,7 +204,7 @@ def modal_generacion_pdf_unificado(report_id, servicio, datos_rutas, cfe):
                         st.error(f"❌ Error al procesar la solicitud: {str(e)}")
 
 
-def GenerarArchivos(report_id, cfe):
+def GenerarArchivos(report_id, cfe, itic):
     if not report_id or str(report_id).strip() == "":
         st.error(
             "Falta `report_id` en la URL. Ejemplo: `?report_id=reportTU_UUID&pagina=reporte`"
@@ -210,4 +221,5 @@ def GenerarArchivos(report_id, cfe):
         servicio=Servicio,
         datos_rutas=Datos["Comentarios"],
         cfe=cfe,
+        itic=itic,
     )

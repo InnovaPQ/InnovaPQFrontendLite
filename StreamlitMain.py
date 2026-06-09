@@ -13,12 +13,13 @@ st.set_page_config(
 # Ejemplo: 
 # http://localhost:8501/?report_id=report41a51eff-12a6-48ae-ba0b-f09fce52f6bd&pagina=reporte&cfe=true
 report_id = st.query_params.get("report_id")
-pagina=st.query_params.get("pagina")
-cfe=st.query_params.get("cfe")
+pagina = st.query_params.get("pagina")
+cfe = st.query_params.get("cfe")
+itic = st.query_params.get("itic")
 
 
-if pagina=="reporte":
-    Reporte(report_id=report_id,cfe=cfe)
+if pagina == "reporte":
+    Reporte(report_id=report_id, cfe=cfe, itic=itic)
 else:
     # Por defecto, mostrar la sección de carga
     CargarDatos2()

@@ -7,22 +7,25 @@ from Reporte.Energia.FactoresEnergia import FactoresEnergia
 from Reporte.Energia.ActivaReactivaEnergia import ActivaReactivaEnergia
 from Reporte.Energia.DemandasEnergia import DemandasEnergia
 from Reporte.Energia.cfe import CFE
+from Reporte.Energia.itic import ITIC
 
 
-def Ventana(MostrarVista,Servicio,Datos,cfe):
+def Ventana(MostrarVista, Servicio, Datos, cfe, itic):
     match MostrarVista:
         case "Descripcion":
-            return Descripcion(Servicio,Datos)
+            return Descripcion(Servicio, Datos)
         case "Resumen":
-            return ResumenEnergia(Servicio,Datos)
+            return ResumenEnergia(Servicio, Datos)
         case "Factores":
-            return FactoresEnergia(Servicio,Datos)
+            return FactoresEnergia(Servicio, Datos)
         case "Energia":
-            return ActivaReactivaEnergia(Servicio,Datos)
+            return ActivaReactivaEnergia(Servicio, Datos)
         case "Demandas":
-            return DemandasEnergia(Servicio,Datos)
+            return DemandasEnergia(Servicio, Datos)
         case "cfe":
-            return CFE(Servicio,Datos,cfe)
+            return CFE(Servicio, Datos, cfe)
+        case "itic":
+            return ITIC(Servicio, Datos, itic)
 
 
 
@@ -46,7 +49,7 @@ def get_diccionario_rutas(_Servicio,nombre_carpeta):
 
 
    
-def Energia(report_id,cfe):
+def Energia(report_id, cfe, itic):
 
     Servicio=get_servicio_aws(report_id, _version=1)
     Datos=get_diccionario_rutas(_Servicio=Servicio,nombre_carpeta=report_id)
@@ -68,8 +71,8 @@ def Energia(report_id,cfe):
         "Factores Potencia y Carga",
         "Energía Activa y Reactiva",
         "Demandas",
-        "CFE"
-    
+        "CFE",
+        "Curva ITIC",
     ]
     
     # Obtener el índice de la vista actual
@@ -82,12 +85,12 @@ def Energia(report_id,cfe):
     # Mapeo de nombres de UI a nombres internos
     mapeo_vistas = {
         "Descripción": "Descripcion",
-        "Resumen":"Resumen",
-        "Factores Potencia y Carga":"Factores",
-        "Energía Activa y Reactiva":"Energia",
-        "Demandas":"Demandas",
-        "CFE":"cfe"
-   
+        "Resumen": "Resumen",
+        "Factores Potencia y Carga": "Factores",
+        "Energía Activa y Reactiva": "Energia",
+        "Demandas": "Demandas",
+        "CFE": "cfe",
+        "Curva ITIC": "itic",
     }
     
     # Usar botones en dos filas que funcionan como tabs
@@ -150,7 +153,7 @@ def Energia(report_id,cfe):
     # Renderizar el contenido abajo basado en la vista seleccionada
     # Convertir el nombre de UI al nombre interno usando el mapeo
     vista_interna = mapeo_vistas.get(st.session_state.mostrar_vista, st.session_state.mostrar_vista)
-    Ventana(MostrarVista=vista_interna, Servicio=Servicio, Datos=Datos,cfe=cfe)
+    Ventana(MostrarVista=vista_interna, Servicio=Servicio, Datos=Datos, cfe=cfe, itic=itic)
 
     # Sidebar para comentarios (Notas, Importante, Precaución) de Energía
     with st.sidebar:
